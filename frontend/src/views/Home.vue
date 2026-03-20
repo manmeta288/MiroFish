@@ -15,14 +15,17 @@
     <!-- ─── Header ──────────────────────────────────────────────────────── -->
     <header class="site-header">
       <div class="header-inner">
-        <a href="https://nodera.app" class="logo-link" target="_blank" rel="noopener">
-          <span class="logo-dot"></span>
-          <span class="logo-text">NODERA</span>
-          <span class="logo-tag" @click.prevent.stop>SIMULATE</span>
-        </a>
+        <div class="logo-group">
+          <a href="https://www.nodera.app" class="logo-link" target="_blank" rel="noopener">
+            <span class="logo-dot"></span>
+            <span class="logo-text">NODERA</span>
+          </a>
+          <span class="logo-divider"></span>
+          <span class="logo-tag">SIMULATE</span>
+        </div>
         <nav class="header-nav">
           <a href="https://learn.nodera.app" class="nav-link" target="_blank" rel="noopener">Learn</a>
-          <a href="https://nodera.app" class="nav-link" target="_blank" rel="noopener">Nodera</a>
+          <a href="https://www.nodera.app" class="nav-link" target="_blank" rel="noopener">Nodera</a>
         </nav>
       </div>
     </header>
@@ -111,12 +114,6 @@
       <div v-if="loadingData" class="loading-state">
         <div class="spinner"></div>
         <span class="loading-label">Fetching live network intelligence…</span>
-      </div>
-
-      <!-- API error notice -->
-      <div v-if="dataError" class="error-notice">
-        <span class="error-icon">⚠</span>
-        {{ dataError }}
       </div>
 
       <!-- Step 2: Scenario cards -->
@@ -320,18 +317,50 @@ const onNetworkChange = async () => {
   dataError.value = ''
   loadingData.value = true
 
+  // Get selected network display info for fallback
+  const selectedNet = networkList.value.find(n => n.slug === selectedNetwork.value)
+  const displayName = selectedNet?.display_name || selectedNetwork.value
+  const token = selectedNet?.token || 'TOKEN'
+
   try {
     const res = await service.get('/api/network/fetch', { params: { network: selectedNetwork.value } })
     if (res.success) {
       networkData.value = res.data
     } else {
-      dataError.value = res.error || 'Failed to fetch network data.'
+      // Silent fail - use fallback data
+      networkData.value = createFallbackNetworkData(displayName, token)
     }
   } catch (e) {
-    dataError.value = 'Could not reach network API. Check your connection and try again.'
-    console.error('Network fetch error:', e)
+    // Silent fail - use fallback data so user can still proceed
+    console.warn('Network API failed, using fallback:', e)
+    networkData.value = createFallbackNetworkData(displayName, token)
   } finally {
     loadingData.value = false
+  }
+}
+
+const createFallbackNetworkData = (displayName, token) => {
+  return {
+    network: selectedNetwork.value,
+    display_name: displayName,
+    token: token,
+    price_usd: 0,
+    price_change_24h: 0,
+    market_cap_usd: 0,
+    validator_count: 100,
+    top_validators: [
+      { name: 'Validator 1', voting_power_pct: 15.5, commission: '5%' },
+      { name: 'Validator 2', voting_power_pct: 12.3, commission: '4%' },
+      { name: 'Validator 3', voting_power_pct: 10.1, commission: '6%' },
+    ],
+    nakamoto_coefficient: 3,
+    staking_ratio: 0.65,
+    staking_apy: 0.15,
+    total_staked_usd: 0,
+    governance_proposals: [],
+    data_sources_used: ['fallback'],
+    fetched_at: new Date().toISOString(),
+    synthetic_report: `# ${displayName} (${token}) — Network Intelligence Report\n\nLive data temporarily unavailable. Using fallback parameters for simulation.`,
   }
 }
 
@@ -438,8 +467,9 @@ const formatPrice = (p) => {
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .site-header {
-  position: relative;
-  z-index: 10;
+  position: sticky;
+  top: 0;
+  z-index: 100;
   border-bottom: 3px solid #000;
   background: #fff;
 }
@@ -450,6 +480,11 @@ const formatPrice = (p) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .logo-link {
   display: flex;
@@ -471,6 +506,11 @@ const formatPrice = (p) => {
   letter-spacing: 0.06em;
   color: #000;
 }
+.logo-divider {
+  width: 1px;
+  height: 24px;
+  background: #ddd;
+}
 .logo-tag {
   font-size: 11px;
   font-weight: 700;
@@ -481,6 +521,7 @@ const formatPrice = (p) => {
   text-transform: uppercase;
   pointer-events: none;
   user-select: none;
+  cursor: default;
 }
 .header-nav {
   display: flex;
