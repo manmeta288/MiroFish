@@ -18,11 +18,11 @@
         <a href="https://nodera.app" class="logo-link" target="_blank" rel="noopener">
           <span class="logo-dot"></span>
           <span class="logo-text">NODERA</span>
-          <span class="logo-tag">SIMULATE</span>
+          <span class="logo-tag" @click.prevent.stop>SIMULATE</span>
         </a>
         <nav class="header-nav">
           <a href="https://learn.nodera.app" class="nav-link" target="_blank" rel="noopener">Learn</a>
-          <a href="https://nodera.app" class="nav-link" target="_blank" rel="noopener">Platform</a>
+          <a href="https://nodera.app" class="nav-link" target="_blank" rel="noopener">Nodera</a>
         </nav>
       </div>
     </header>
@@ -32,15 +32,15 @@
       <div class="hero-inner">
         <div class="hero-kicker">
           <span class="kicker-dot"></span>
-          Agent-Based Network Simulation
+          VALIDATOR RISK SIMULATION
         </div>
         <h1 class="hero-title">
-          Model the Future<br />
-          <span class="hero-title-accent">of Your Network</span>
+          Stress-Test Your Network<br />
+          <span class="hero-title-accent">Before It Breaks</span>
         </h1>
         <p class="hero-sub">
           Select a blockchain network. Fetch live intelligence. Run a targeted
-          simulation before the risk becomes reality.
+          simulation. Know your exposure before the market does.
         </p>
       </div>
     </section>
@@ -52,7 +52,7 @@
       <div class="step-block">
         <div class="step-label">
           <span class="step-number">01</span>
-          <span class="step-title-text">Select a Network</span>
+          <span class="step-title-text">Choose a Network</span>
         </div>
 
         <div class="select-wrapper">
@@ -187,7 +187,7 @@
 
     <!-- ─── Footer ───────────────────────────────────────────────────────── -->
     <footer class="site-footer">
-      <span>© {{ new Date().getFullYear() }} Nodera. Built for validator intelligence.</span>
+      <span>Infrastructure intelligence for serious operators.</span>
     </footer>
   </div>
 </template>
@@ -210,13 +210,33 @@ const selectedScenario = ref(null)
 const simulationPrompt = ref('')
 const launching = ref(false)
 
+// ─── Fallback network list (in case API fails) ────────────────────────────────
+const FALLBACK_NETWORKS = [
+  { slug: 'ethereum', display_name: 'Ethereum', token: 'ETH' },
+  { slug: 'cosmos', display_name: 'Cosmos Hub', token: 'ATOM' },
+  { slug: 'celestia', display_name: 'Celestia', token: 'TIA' },
+  { slug: 'osmosis', display_name: 'Osmosis', token: 'OSMO' },
+  { slug: 'injective', display_name: 'Injective', token: 'INJ' },
+  { slug: 'sei', display_name: 'Sei', token: 'SEI' },
+  { slug: 'neutron', display_name: 'Neutron', token: 'NTRN' },
+  { slug: 'dymension', display_name: 'Dymension', token: 'DYM' },
+  { slug: 'polkadot', display_name: 'Polkadot', token: 'DOT' },
+  { slug: 'solana', display_name: 'Solana', token: 'SOL' },
+  { slug: 'near', display_name: 'NEAR Protocol', token: 'NEAR' },
+]
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
     const res = await service.get('/api/network/list')
-    if (res.success) networkList.value = res.data
+    if (res.success && res.data && res.data.length > 0) {
+      networkList.value = res.data
+    } else {
+      networkList.value = FALLBACK_NETWORKS
+    }
   } catch (e) {
-    console.warn('Could not load network list:', e)
+    console.warn('Could not load network list from API, using fallback:', e)
+    networkList.value = FALLBACK_NETWORKS
   }
 })
 
@@ -459,6 +479,8 @@ const formatPrice = (p) => {
   padding: 3px 8px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
 }
 .header-nav {
   display: flex;
@@ -811,11 +833,13 @@ const formatPrice = (p) => {
   position: relative;
   z-index: 5;
   border-top: 3px solid #000;
-  padding: 24px 32px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #888;
-  background: #fff;
+  padding: 32px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  background: #f5f5f5;
+  text-align: center;
+  letter-spacing: 0.02em;
 }
 
 /* ─── Transitions ────────────────────────────────────────────────────────── */
