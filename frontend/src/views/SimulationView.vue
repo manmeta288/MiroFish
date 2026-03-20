@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <div class="brand" @click="router.push('/')">MIROFISH</div>
+        <div class="brand" @click="router.push('/')"><span class="brand-dot"></span><span class="brand-name">NODERA</span><span class="brand-tag">SIMULATE</span></div>
       </div>
       
       <div class="header-center">
@@ -321,11 +321,34 @@ onMounted(async () => {
 }
 
 .brand {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
+}
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3b30;
+  flex-shrink: 0;
+}
+.brand-name {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: #000;
+}
+.brand-tag {
+  font-family: 'Poppins', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  background: #000;
+  color: #fff;
+  padding: 2px 6px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .header-center {

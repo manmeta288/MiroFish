@@ -2,7 +2,11 @@
   <div class="process-page">
     <!-- 顶部导航栏 -->
     <nav class="navbar">
-      <div class="nav-brand" @click="goHome">MIROFISH</div>
+      <div class="nav-brand" @click="goHome">
+        <span class="brand-dot-sm"></span>
+        <span>NODERA</span>
+        <span class="brand-tag-sm">SIMULATE</span>
+      </div>
       
       <!-- 中间步骤指示器 -->
       <div class="nav-center">
@@ -1122,15 +1126,37 @@ onUnmounted(() => {
 }
 
 .nav-brand {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
   transition: opacity 0.2s;
+  text-decoration: none;
+  color: #000;
 }
-
-.nav-brand:hover {
-  opacity: 0.8;
+.nav-brand:hover { opacity: 0.8; }
+.brand-dot-sm {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3b30;
+  flex-shrink: 0;
+}
+.nav-brand > span:not(.brand-dot-sm):not(.brand-tag-sm) {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+.brand-tag-sm {
+  font-family: 'Poppins', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  background: #000;
+  color: #fff;
+  padding: 2px 6px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .nav-center {
