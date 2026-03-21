@@ -26,6 +26,41 @@ def _strip_env(key: str, default=None):
     return v or None
 
 
+def _resolve_neo4j() -> tuple[str, str, str | None, bool]:
+    """
+    Returns (uri, user, password, auth_disabled).
+
+    Supports the same NEO4J_AUTH=username/password format as the official Neo4j Docker image,
+    so MiroFish can reference the Neo4j service variable directly instead of duplicating
+    NEO4J_PASSWORD (which often drifts). Password after first '/' (remainder is the password,
+    so passwords may contain '/').
+    """
+    uri = _strip_env("NEO4J_URI") or "bolt://localhost:7687"
+    if uri.lower().startswith("olt://"):  # common typo for bolt://
+        uri = "bolt://" + uri[6:]
+    user = _strip_env("NEO4J_USER") or "neo4j"
+    password = _strip_env("NEO4J_PASSWORD")
+    auth_line = _strip_env("NEO4J_AUTH")
+    auth_disabled = False
+
+    if auth_line is not None and auth_line.lower() == "none":
+        auth_disabled = True
+        password = None
+    elif not password and auth_line:
+        if "/" in auth_line:
+            u, _, p = auth_line.partition("/")
+            u = u.strip()
+            p = p.strip()
+            if u:
+                user = u
+            password = p if p else None
+
+    return uri, user, password, auth_disabled
+
+
+_NEO4J_URI, _NEO4J_USER, _NEO4J_PASSWORD, _NEO4J_AUTH_DISABLED = _resolve_neo4j()
+
+
 class Config:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY', 'mirofish-secret-key')
@@ -39,10 +74,11 @@ class Config:
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')
 
-    # Neo4j (strip avoids copy/paste newlines/spaces that match in the UI but fail auth)
-    NEO4J_URI = _strip_env('NEO4J_URI') or 'bolt://localhost:7687'
-    NEO4J_USER = _strip_env('NEO4J_USER') or 'neo4j'
-    NEO4J_PASSWORD = _strip_env('NEO4J_PASSWORD')
+    # Neo4j — see _resolve_neo4j(); set NEO4J_PASSWORD *or* NEO4J_AUTH=neo4j/secret (Docker style)
+    NEO4J_URI = _NEO4J_URI
+    NEO4J_USER = _NEO4J_USER
+    NEO4J_PASSWORD = _NEO4J_PASSWORD
+    NEO4J_AUTH_DISABLED = _NEO4J_AUTH_DISABLED
 
     # File uploads
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
@@ -75,6 +111,10 @@ class Config:
         errors = []
         if not cls.LLM_API_KEY:
             errors.append("LLM_API_KEY is not configured")
-        if not cls.NEO4J_PASSWORD:
-            errors.append("NEO4J_PASSWORD is not configured")
+        if not cls.NEO4J_AUTH_DISABLED and not cls.NEO4J_PASSWORD:
+            errors.append("NEO4J_PASSWORD or NEO4J_AUTH (neo4j/password) is not configured")
         return errors
+
+    @classmethod
+    def neo4j_credentials_ready(cls) -> bool:
+        return bool(cls.NEO4J_AUTH_DISABLED or cls.NEO4J_PASSWORD)

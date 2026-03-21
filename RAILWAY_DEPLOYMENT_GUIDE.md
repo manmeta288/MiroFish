@@ -56,17 +56,19 @@ NEO4J_PLUGINS=["apoc", "gds"]  # APOC for utilities, GDS for graph data science
 
 If MiroFish shows **Unauthorized** but you believe the password is correct:
 
-1. **Neo4j service must use `NEO4J_AUTH`**, not separate `NEO4J_USER` / `NEO4J_PASSWORD`. The official image only applies credentials from  
-   `NEO4J_AUTH=neo4j/<password>` (everything after `/` is the password).
+1. **URI spelling** — Use **`bolt://`** (with a **b**), not `olt://`. Correct examples:  
+   `bolt://noderamfneo4j.railway.internal:7687` or `bolt://noderamfneo4j:7687` (short internal hostname from Railway).
 
-2. **Keep MiroFish in sync with one Railway reference variable**  
-   In MiroFish → Variables → *New Variable* → *Reference* → pick the Neo4j service → use the same password Railway injects for Neo4j (or parse from `NEO4J_AUTH` if you expose a derived var). That avoids drift between two manually typed secrets.
+2. **Neo4j service must use `NEO4J_AUTH`**, not separate `NEO4J_USER` / `NEO4J_PASSWORD`. The official image only applies credentials from  
+   `NEO4J_AUTH=neo4j/<password>` (everything after the first `/` is the password).
 
-3. **Hidden whitespace**  
-   Re-paste the password in both services, or temporarily set a simple alphanumeric password to rule out invisible characters.
+3. **MiroFish: same secret as Neo4j** — Either set **`NEO4J_PASSWORD`** to the password only (after the slash), **or** set **`NEO4J_AUTH=neo4j/<password>`** (recommended: use **Variable reference** from the Neo4j service so MiroFish gets the exact same `NEO4J_AUTH` value). If both are set, **`NEO4J_PASSWORD` wins** — remove a stale `NEO4J_PASSWORD` if you switch to referencing `NEO4J_AUTH`.
 
-4. **App config precedence**  
-   The backend loads `.env` with **`override=False`** so **Railway’s environment variables always win** over any file in the image. If you still see Unauthorized after a deploy, trigger a **clean redeploy** of MiroFish so the new image is running.
+4. **Password is stored on the Neo4j volume** — Changing `NEO4J_AUTH` in Railway **does not** change an already-initialized database. The DB keeps the old password until you change it inside Neo4j or **delete the volume** (data loss) and redeploy so Neo4j picks up the new env.
+
+5. **Hidden whitespace** — Re-paste the password, or use a short alphanumeric test password.
+
+6. **App config precedence** — The backend loads `.env` with **`override=False`** so Railway’s env wins. Redeploy MiroFish after config changes.
 
 ---
 

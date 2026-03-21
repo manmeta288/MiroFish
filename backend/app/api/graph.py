@@ -284,8 +284,8 @@ def build_graph():
         
         # 检查配置
         errors = []
-        if not Config.NEO4J_PASSWORD:
-            errors.append("NEO4J_PASSWORD未配置")
+        if not Config.neo4j_credentials_ready():
+            errors.append("NEO4J_PASSWORD or NEO4J_AUTH is not configured")
         if errors:
             logger.error(f"配置错误: {errors}")
             return jsonify({
@@ -499,7 +499,7 @@ def build_graph():
                 task_manager.update_task(
                     task_id,
                     status=TaskStatus.FAILED,
-                    message=f"构建失败: {str(e)}",
+                    message=f"Build failed: {str(e)}",
                     error=traceback.format_exc()
                 )
         
@@ -567,10 +567,10 @@ def get_graph_data(graph_id: str):
     获取图谱数据（节点和边）
     """
     try:
-        if not Config.NEO4J_PASSWORD:
+        if not Config.neo4j_credentials_ready():
             return jsonify({
                 "success": False,
-                "error": "NEO4J_PASSWORD未配置"
+                "error": "NEO4J_PASSWORD or NEO4J_AUTH is not configured"
             }), 500
         
         builder = GraphBuilderService()
@@ -595,10 +595,10 @@ def delete_graph(graph_id: str):
     删除Zep图谱
     """
     try:
-        if not Config.NEO4J_PASSWORD:
+        if not Config.neo4j_credentials_ready():
             return jsonify({
                 "success": False,
-                "error": "NEO4J_PASSWORD未配置"
+                "error": "NEO4J_PASSWORD or NEO4J_AUTH is not configured"
             }), 500
         
         builder = GraphBuilderService()

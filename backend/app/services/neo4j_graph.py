@@ -18,6 +18,28 @@ logger = logging.getLogger('mirofish.neo4j_graph')
 _CONNECT_RETRIES = 5
 _CONNECT_BACKOFF = 3  # seconds between retries
 
+_AUTH_HELP = (
+    "Neo4j rejected the username/password (Neo.ClientError.Security.Unauthorized). "
+    "Fix: (1) URI must be bolt://hostname:7687 — not olt://. "
+    "(2) On the Neo4j Railway service use NEO4J_AUTH=neo4j/yourpassword. "
+    "On MiroFish set either the same NEO4J_AUTH (reference the Neo4j variable) OR "
+    "NEO4J_PASSWORD equal to the part after the slash only. "
+    "(3) If you changed NEO4J_AUTH after the DB first started, the password inside the "
+    "persisted volume may still be the old one — reset the Neo4j password or recreate the volume."
+)
+
+
+def _is_neo4j_auth_failure(exc: BaseException) -> bool:
+    s = str(exc).lower()
+    code = getattr(exc, "code", None)
+    code_s = str(code).lower() if code is not None else ""
+    return (
+        "unauthorized" in s
+        or "authentication failure" in s
+        or "security.unauthorized" in s
+        or "unauthorized" in code_s
+    )
+
 
 class Neo4jGraphService:
     """Manages graph lifecycle and entity/relationship storage in Neo4j."""
@@ -26,30 +48,46 @@ class Neo4jGraphService:
         uri = Config.NEO4J_URI
         user = Config.NEO4J_USER
         password = Config.NEO4J_PASSWORD
-        if not password:
-            raise ValueError("NEO4J_PASSWORD is not configured")
+        auth_disabled = getattr(Config, "NEO4J_AUTH_DISABLED", False)
 
-        last_exc = None
+        if not auth_disabled and not password:
+            raise ValueError("NEO4J_PASSWORD or NEO4J_AUTH is not configured")
+
+        last_exc: BaseException | None = None
+        auth_failed = False
         for attempt in range(1, _CONNECT_RETRIES + 1):
             try:
-                self.driver = GraphDatabase.driver(uri, auth=(user, password))
-                # verify connectivity immediately
+                if auth_disabled:
+                    self.driver = GraphDatabase.driver(uri, auth=None)
+                else:
+                    self.driver = GraphDatabase.driver(uri, auth=(user, password))
                 self.driver.verify_connectivity()
+                last_exc = None
                 break
             except Exception as exc:
                 last_exc = exc
+                if _is_neo4j_auth_failure(exc):
+                    auth_failed = True
+                    logger.error("Neo4j authentication failed (not retrying): %s", exc)
+                    break
                 logger.warning(
                     "Neo4j connection attempt %d/%d failed: %s — retrying in %ds",
-                    attempt, _CONNECT_RETRIES, exc, _CONNECT_BACKOFF
+                    attempt,
+                    _CONNECT_RETRIES,
+                    exc,
+                    _CONNECT_BACKOFF,
                 )
                 if attempt < _CONNECT_RETRIES:
                     time.sleep(_CONNECT_BACKOFF)
-        else:
+
+        if last_exc is not None:
+            if auth_failed:
+                raise ServiceUnavailable(_AUTH_HELP + f" Raw error: {last_exc}") from last_exc
             raise ServiceUnavailable(
                 f"Cannot connect to Neo4j at {uri} after {_CONNECT_RETRIES} attempts. "
                 f"Check that the Neo4j service is running and NEO4J_URI is correct. "
                 f"Last error: {last_exc}"
-            )
+            ) from last_exc
 
         self._ensure_schema()
 
