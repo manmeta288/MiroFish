@@ -12,8 +12,9 @@ Priority order per data type:
 
 import os
 import time
-import math
 import requests
+from decimal import Decimal
+from urllib.parse import quote
 from flask import request, jsonify
 from . import network_bp
 from ..utils.logger import get_logger
@@ -24,6 +25,7 @@ logger = get_logger("nodera.network")
 _T = 14  # seconds (LCD / RPC can be slow from cloud regions)
 
 # ─── Network registry ─────────────────────────────────────────────────────────
+# market_cap_rank: lower = larger typical native-token market cap (used to sort /list).
 NETWORKS = {
     "ethereum": {
         "display_name": "Ethereum",
@@ -31,94 +33,20 @@ NETWORKS = {
         "coingecko_id": "ethereum",
         "coincap_id": "ethereum",
         "defillama_id": "ethereum",
+        "defillama_chain": "Ethereum",
         "ecosystem": "ethereum",
         "explorer": "etherscan",
+        "market_cap_rank": 1,
     },
-    "cosmos": {
-        "display_name": "Cosmos Hub",
-        "token": "ATOM",
-        "coingecko_id": "cosmos",
-        "coincap_id": "cosmos",
-        "defillama_id": "CosmosHub",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://cosmos-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/cosmoshub",
-        "mintscan_id": "cosmos",
-    },
-    "celestia": {
-        "display_name": "Celestia",
-        "token": "TIA",
-        "coingecko_id": "celestia",
-        "coincap_id": "celestia",
-        "defillama_id": "Celestia",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://celestia-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/celestia",
-        "mintscan_id": "celestia",
-    },
-    "osmosis": {
-        "display_name": "Osmosis",
-        "token": "OSMO",
-        "coingecko_id": "osmosis",
-        "coincap_id": "osmosis",
-        "defillama_id": "Osmosis",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://osmosis-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/osmosis",
-        "mintscan_id": "osmosis",
-    },
-    "injective": {
-        "display_name": "Injective",
-        "token": "INJ",
-        "coingecko_id": "injective-protocol",
-        "coincap_id": "injective-protocol",
-        "defillama_id": "Injective",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://injective-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/injective",
-        "mintscan_id": "injective",
-    },
-    "sei": {
-        "display_name": "Sei",
-        "token": "SEI",
-        "coingecko_id": "sei-network",
-        "coincap_id": "sei",
-        "defillama_id": "Sei",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://sei-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/sei",
-        "mintscan_id": "sei",
-    },
-    "neutron": {
-        "display_name": "Neutron",
-        "token": "NTRN",
-        "coingecko_id": "neutron-3",
-        "coincap_id": "neutron",
-        "defillama_id": "Neutron",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://neutron-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/neutron",
-        "mintscan_id": "neutron",
-    },
-    "dymension": {
-        "display_name": "Dymension",
-        "token": "DYM",
-        "coingecko_id": "dymension",
-        "coincap_id": "dymension",
-        "defillama_id": "Dymension",
-        "ecosystem": "cosmos",
-        "lcd_url": "https://dymension-rest.publicnode.com",
-        "lcd_backup": "https://rest.cosmos.directory/dymension",
-        "mintscan_id": "dymension",
-    },
-    "polkadot": {
-        "display_name": "Polkadot",
-        "token": "DOT",
-        "coingecko_id": "polkadot",
-        "coincap_id": "polkadot",
-        "defillama_id": "Polkadot",
-        "ecosystem": "substrate",
-        "subscan_network": "polkadot",
+    "bnb_chain": {
+        "display_name": "BNB Chain",
+        "token": "BNB",
+        "coingecko_id": "binancecoin",
+        "coincap_id": "binance-coin",
+        "defillama_id": "binancecoin",
+        "defillama_chain": "BSC",
+        "ecosystem": "bnb",
+        "market_cap_rank": 2,
     },
     "solana": {
         "display_name": "Solana",
@@ -126,7 +54,60 @@ NETWORKS = {
         "coingecko_id": "solana",
         "coincap_id": "solana",
         "defillama_id": "Solana",
+        "defillama_chain": "Solana",
         "ecosystem": "solana",
+        "market_cap_rank": 3,
+    },
+    "avalanche": {
+        "display_name": "Avalanche",
+        "token": "AVAX",
+        "coingecko_id": "avalanche-2",
+        "coincap_id": "avalanche",
+        "defillama_id": "avalanche-2",
+        "defillama_chain": "Avalanche",
+        "ecosystem": "avalanche",
+        "p_chain_urls": [
+            "https://api.avax.network/ext/bc/P",
+            "https://avalanche.publicnode.com/ext/bc/P",
+        ],
+        "market_cap_rank": 4,
+    },
+    "polkadot": {
+        "display_name": "Polkadot",
+        "token": "DOT",
+        "coingecko_id": "polkadot",
+        "coincap_id": "polkadot",
+        "defillama_id": "Polkadot",
+        "defillama_chain": "Polkadot",
+        "ecosystem": "substrate",
+        "subscan_network": "polkadot",
+        "market_cap_rank": 5,
+    },
+    "polygon": {
+        "display_name": "Polygon",
+        "token": "MATIC",
+        "coingecko_id": "matic-network",
+        "coincap_id": "polygon",
+        "defillama_id": "matic-network",
+        "defillama_chain": "Polygon",
+        "ecosystem": "polygon",
+        "polygon_staking_urls": [
+            "https://staking-api.polygon.technology/api/v2/validators",
+        ],
+        "market_cap_rank": 6,
+    },
+    "injective": {
+        "display_name": "Injective",
+        "token": "INJ",
+        "coingecko_id": "injective-protocol",
+        "coincap_id": "injective-protocol",
+        "defillama_id": "Injective",
+        "defillama_chain": "Injective",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://injective-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/injective",
+        "mintscan_id": "injective",
+        "market_cap_rank": 7,
     },
     "near": {
         "display_name": "NEAR Protocol",
@@ -134,7 +115,115 @@ NETWORKS = {
         "coingecko_id": "near",
         "coincap_id": "near-protocol",
         "defillama_id": "Near",
+        "defillama_chain": "Near",
         "ecosystem": "near",
+        "market_cap_rank": 8,
+    },
+    "cosmos": {
+        "display_name": "Cosmos Hub",
+        "token": "ATOM",
+        "coingecko_id": "cosmos",
+        "coincap_id": "cosmos",
+        "defillama_id": "CosmosHub",
+        "defillama_chain": "CosmosHub",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://cosmos-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/cosmoshub",
+        "mintscan_id": "cosmos",
+        "market_cap_rank": 9,
+    },
+    "sui": {
+        "display_name": "Sui",
+        "token": "SUI",
+        "coingecko_id": "sui",
+        "coincap_id": "sui",
+        "defillama_id": "sui",
+        "defillama_chain": "Sui",
+        "ecosystem": "sui",
+        "sui_rpc_urls": [
+            "https://fullnode.mainnet.sui.io",
+            "https://sui.publicnode.com",
+        ],
+        "market_cap_rank": 10,
+    },
+    "aptos": {
+        "display_name": "Aptos",
+        "token": "APT",
+        "coingecko_id": "aptos",
+        "coincap_id": "aptos",
+        "defillama_id": "aptos",
+        "defillama_chain": "Aptos",
+        "ecosystem": "aptos",
+        "aptos_rest_urls": [
+            "https://fullnode.mainnet.aptoslabs.com",
+            "https://api.mainnet.aptoslabs.com",
+        ],
+        "market_cap_rank": 11,
+    },
+    "celestia": {
+        "display_name": "Celestia",
+        "token": "TIA",
+        "coingecko_id": "celestia",
+        "coincap_id": "celestia",
+        "defillama_id": "Celestia",
+        "defillama_chain": "Celestia",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://celestia-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/celestia",
+        "mintscan_id": "celestia",
+        "market_cap_rank": 12,
+    },
+    "osmosis": {
+        "display_name": "Osmosis",
+        "token": "OSMO",
+        "coingecko_id": "osmosis",
+        "coincap_id": "osmosis",
+        "defillama_id": "Osmosis",
+        "defillama_chain": "Osmosis",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://osmosis-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/osmosis",
+        "mintscan_id": "osmosis",
+        "market_cap_rank": 13,
+    },
+    "sei": {
+        "display_name": "Sei",
+        "token": "SEI",
+        "coingecko_id": "sei-network",
+        "coincap_id": "sei",
+        "defillama_id": "Sei",
+        "defillama_chain": "Sei",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://sei-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/sei",
+        "mintscan_id": "sei",
+        "market_cap_rank": 14,
+    },
+    "neutron": {
+        "display_name": "Neutron",
+        "token": "NTRN",
+        "coingecko_id": "neutron-3",
+        "coincap_id": "neutron",
+        "defillama_id": "Neutron",
+        "defillama_chain": "Neutron",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://neutron-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/neutron",
+        "mintscan_id": "neutron",
+        "market_cap_rank": 15,
+    },
+    "dymension": {
+        "display_name": "Dymension",
+        "token": "DYM",
+        "coingecko_id": "dymension",
+        "coincap_id": "dymension",
+        "defillama_id": "Dymension",
+        "defillama_chain": "Dymension",
+        "ecosystem": "cosmos",
+        "lcd_url": "https://dymension-rest.publicnode.com",
+        "lcd_backup": "https://rest.cosmos.directory/dymension",
+        "mintscan_id": "dymension",
+        "market_cap_rank": 16,
     },
 }
 
@@ -143,8 +232,11 @@ NETWORKS = {
 
 def _get(url: str, params: dict = None, headers: dict = None) -> dict | list | None:
     """GET with timeout; returns parsed JSON or None on any failure."""
+    h = {"User-Agent": "NoderaSimulate/1.0 (network-intelligence)"}
+    if headers:
+        h.update(headers)
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=_T)
+        r = requests.get(url, params=params, headers=h, timeout=_T)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -153,8 +245,11 @@ def _get(url: str, params: dict = None, headers: dict = None) -> dict | list | N
 
 
 def _post_json(url: str, payload: dict, headers: dict = None) -> dict | list | None:
+    h = {"Content-Type": "application/json", "User-Agent": "NoderaSimulate/1.0 (network-intelligence)"}
+    if headers:
+        h.update(headers)
     try:
-        r = requests.post(url, json=payload, headers=headers or {"Content-Type": "application/json"}, timeout=_T)
+        r = requests.post(url, json=payload, headers=h, timeout=_T)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -493,6 +588,165 @@ def _validators_near() -> list | None:
     return normalized if normalized else None
 
 
+def _validators_polygon_staking(cfg: dict) -> list | None:
+    """Polygon PoS: official staking API (primary) + DefiLlama-free on-chain proxy via public data."""
+    for base in cfg.get("polygon_staking_urls") or []:
+        data = _get(base, params={"limit": 200, "offset": 0})
+        if not data:
+            continue
+        rows = data.get("result") or data.get("validators") or []
+        if not rows:
+            continue
+        normalized = []
+        for v in rows:
+            if (v.get("status") or "").lower() != "active":
+                continue
+            try:
+                ts = float(v.get("totalStaked") or 0)
+            except (TypeError, ValueError):
+                ts = 0.0
+            tk = _safe_int(ts)
+            if tk <= 0:
+                tk = 1
+            name = (v.get("name") or v.get("signer") or "validator").strip()
+            try:
+                comm_pct = float(v.get("commissionPercent") or 0)
+            except (TypeError, ValueError):
+                comm_pct = 0.0
+            cr = str(max(0.0, min(1.0, comm_pct / 100.0)))
+            normalized.append({
+                "description": {"moniker": name[:64] or "Unknown"},
+                "tokens": tk,
+                "commission": {"commission_rates": {"rate": cr}},
+            })
+        if normalized:
+            return normalized
+    return None
+
+
+def _validators_sui_rpc(cfg: dict) -> list | None:
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "suix_getLatestSuiSystemState", "params": []}
+    for rpc in cfg.get("sui_rpc_urls") or []:
+        j = _post_json(rpc.rstrip("/"), payload)
+        if not j or "result" not in j:
+            continue
+        rows = (j["result"] or {}).get("activeValidators") or []
+        if not rows:
+            continue
+        normalized = []
+        for v in rows:
+            stake = _safe_int(v.get("stakingPoolSuiBalance") or v.get("nextEpochStake") or 0)
+            if stake <= 0:
+                stake = 1
+            name = (v.get("name") or v.get("suiAddress") or "?")[:64]
+            try:
+                comm_bps = int(v.get("commissionRate") or 0)
+            except (TypeError, ValueError):
+                comm_bps = 0
+            cr = str(max(0.0, min(1.0, comm_bps / 10000.0)))
+            normalized.append({
+                "description": {"moniker": name},
+                "tokens": stake,
+                "commission": {"commission_rates": {"rate": cr}},
+            })
+        if normalized:
+            return normalized
+    return None
+
+
+def _validators_aptos_rest(cfg: dict) -> list | None:
+    res_path = quote("0x1::stake::ValidatorSet", safe="")
+    for base in cfg.get("aptos_rest_urls") or []:
+        url = f"{base.rstrip('/')}/v1/accounts/0x1/resource/{res_path}"
+        data = _get(url)
+        if not data or not isinstance(data, dict):
+            continue
+        inner = data.get("data") or {}
+        rows = inner.get("active_validators") or []
+        if not rows:
+            continue
+        normalized = []
+        for v in rows:
+            vp = _safe_int(v.get("voting_power", 0))
+            if vp <= 0:
+                vp = 1
+            addr = v.get("addr") or "?"
+            normalized.append({
+                "description": {"moniker": f"validator_{addr[:10]}…"},
+                "tokens": vp,
+                "commission": {"commission_rates": {"rate": "0"}},
+            })
+        if normalized:
+            return normalized
+    return None
+
+
+def _validators_avalanche_pchain(cfg: dict) -> list | None:
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "platform.getCurrentValidators",
+        "params": {"subnetID": None, "nodeIDs": []},
+    }
+    for purl in cfg.get("p_chain_urls") or []:
+        j = _post_json(purl.rstrip("/"), payload)
+        if not j or "result" not in j:
+            continue
+        rows = (j["result"] or {}).get("validators") or []
+        if not rows:
+            continue
+        normalized = []
+        for v in rows:
+            w = _safe_int(v.get("weight", 0))
+            if w <= 0:
+                w = 1
+            nid = v.get("nodeID") or "?"
+            try:
+                df = float(str(v.get("delegationFee") or "0"))
+            except (TypeError, ValueError):
+                df = 0.0
+            cr = str(max(0.0, min(1.0, df / 100.0)))
+            normalized.append({
+                "description": {"moniker": str(nid)[:48]},
+                "tokens": w,
+                "commission": {"commission_rates": {"rate": cr}},
+            })
+        if normalized:
+            return normalized
+    return None
+
+
+def _validators_bnb_parlia(cfg: dict) -> list | None:
+    """BSC: parlia_getValidators (PublicNode + Binance seeds). Equal weight fallback for stake share."""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "parlia_getValidators", "params": ["latest"]}
+    rpcs = [
+        "https://bsc-rpc.publicnode.com",
+        "https://bsc-dataseed.bnbchain.org",
+        "https://bsc-dataseed1.defibit.io",
+        "https://bsc-dataseed1.ninicoin.io",
+    ]
+    for rpc in rpcs:
+        j = _post_json(rpc.rstrip("/"), payload)
+        if not j or "result" not in j:
+            continue
+        addrs = j["result"]
+        if not isinstance(addrs, list) or not addrs:
+            continue
+        n = len(addrs)
+        per = max(1, 10**12 // n)
+        normalized = []
+        for a in addrs:
+            hx = str(a).lower()
+            label = f"BSC {hx[:8]}…{hx[-4:]}" if hx.startswith("0x") else str(a)[:20]
+            normalized.append({
+                "description": {"moniker": label},
+                "tokens": per,
+                "commission": {"commission_rates": {"rate": "0"}},
+            })
+        return normalized
+    return None
+
+
 def _validators_polkadot_subscan(cfg: dict) -> list | None:
     """Optional: full validator set when SUBSCAN_API_KEY is set."""
     key = os.environ.get("SUBSCAN_API_KEY", "").strip()
@@ -540,6 +794,16 @@ def fetch_validators(cfg: dict) -> tuple[list, list, int, int]:
         raw = _validators_solana()
     elif ecosystem == "near":
         raw = _validators_near()
+    elif ecosystem == "polygon":
+        raw = _validators_polygon_staking(cfg)
+    elif ecosystem == "sui":
+        raw = _validators_sui_rpc(cfg)
+    elif ecosystem == "aptos":
+        raw = _validators_aptos_rest(cfg)
+    elif ecosystem == "avalanche":
+        raw = _validators_avalanche_pchain(cfg)
+    elif ecosystem == "bnb":
+        raw = _validators_bnb_parlia(cfg)
     elif ecosystem == "substrate":
         raw = _validators_polkadot_subscan(cfg)
         if not raw:
@@ -701,6 +965,179 @@ def _staking_defillama(cfg: dict) -> dict | None:
     return None
 
 
+def _polygon_total_staked_wei(cfg: dict) -> int | None:
+    """Sum active validator totalStaked (wei-style float from Polygon staking API)."""
+    for base in cfg.get("polygon_staking_urls") or []:
+        data = _get(base, params={"limit": 200, "offset": 0})
+        if not data:
+            continue
+        rows = data.get("result") or []
+        if not rows:
+            continue
+        s = Decimal(0)
+        for v in rows:
+            if (v.get("status") or "").lower() != "active":
+                continue
+            try:
+                s += Decimal(str(v.get("totalStaked") or 0))
+            except Exception:
+                continue
+        if s > 0:
+            try:
+                return int(s)
+            except Exception:
+                pass
+    return None
+
+
+def _staking_polygon(cfg: dict, price_usd: float, market_cap_usd: float) -> dict | None:
+    if price_usd <= 0 or market_cap_usd <= 0:
+        return None
+    tw = _polygon_total_staked_wei(cfg)
+    if tw is None or tw <= 0:
+        return None
+    circ = market_cap_usd / price_usd
+    if circ <= 0:
+        return None
+    denom = float(circ) * (10 ** 18)
+    ratio = min(0.95, float(tw) / denom) if denom > 0 else 0.0
+    apy = _max_apy_defillama_chain(cfg) or 0.06
+    return {
+        "total_staked_tokens": 0,
+        "staking_ratio": round(ratio, 4),
+        "staking_apy": round(apy, 4),
+    }
+
+
+def _staking_sui_system(cfg: dict, price_usd: float, market_cap_usd: float) -> dict | None:
+    if price_usd <= 0 or market_cap_usd <= 0:
+        return None
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "suix_getLatestSuiSystemState", "params": []}
+    for rpc in cfg.get("sui_rpc_urls") or []:
+        j = _post_json(rpc.rstrip("/"), payload)
+        if not j or "result" not in j:
+            continue
+        total_stake = _safe_int((j["result"] or {}).get("totalStake", 0))
+        if total_stake <= 0:
+            continue
+        circ_sui = market_cap_usd / price_usd
+        if circ_sui <= 0:
+            continue
+        ratio = min(0.95, total_stake / (circ_sui * 1e9))
+        apy = _max_apy_defillama_chain(cfg) or 0.035
+        return {
+            "total_staked_tokens": 0,
+            "staking_ratio": round(ratio, 4),
+            "staking_apy": round(apy, 4),
+        }
+    return None
+
+
+def _staking_avalanche_weights(raw_validators: list, price_usd: float, market_cap_usd: float) -> dict | None:
+    if not raw_validators or price_usd <= 0 or market_cap_usd <= 0:
+        return None
+    tw = sum(_safe_int(v.get("tokens", 0)) for v in raw_validators)
+    if tw <= 0:
+        return None
+    circ = market_cap_usd / price_usd
+    if circ <= 0:
+        return None
+    ratio = min(0.95, tw / (circ * 1e9))
+    apy = _max_apy_defillama_chain({"defillama_chain": "Avalanche", "token": "AVAX"}) or 0.08
+    return {
+        "total_staked_tokens": 0,
+        "staking_ratio": round(ratio, 4),
+        "staking_apy": round(apy, 4),
+    }
+
+
+def _max_apy_defillama_chain(cfg: dict) -> float | None:
+    """Max APY (as fraction 0–1) from DefiLlama yields for this chain + native token."""
+    ch = cfg.get("defillama_chain") or ""
+    tok = (cfg.get("token") or "").upper()
+    if not ch:
+        return None
+    data = _get("https://yields.llama.fi/pools")
+    if not data or "data" not in data:
+        return None
+    max_apy = 0.0
+    stake_kw = (
+        "stake", "stak", "liquid", "lido", "marinade", "rocket", "benqi", "ankr", "persist",
+        "amnis", "ditto", "thala", "meridian", "lista", "helio", "pstake", "venus", "binance",
+    )
+    for p in data["data"]:
+        if (p.get("chain") or "") != ch:
+            continue
+        sym = (p.get("symbol") or "").upper()
+        if tok and sym != tok and tok not in sym and not sym.endswith(tok):
+            continue
+        proj = (p.get("project") or "").lower()
+        if tok and sym == tok and not any(k in proj for k in stake_kw):
+            # native symbol only — skip unrelated DEX pools unless staking-themed
+            continue
+        try:
+            apy = float(p.get("apy") or 0)
+        except (TypeError, ValueError):
+            continue
+        if apy > max_apy:
+            max_apy = apy
+    if max_apy <= 0:
+        for p in data["data"]:
+            if (p.get("chain") or "") != ch:
+                continue
+            sym = (p.get("symbol") or "").upper()
+            if tok and tok not in sym:
+                continue
+            proj = (p.get("project") or "").lower()
+            if not any(k in proj for k in stake_kw):
+                continue
+            try:
+                max_apy = max(max_apy, float(p.get("apy") or 0))
+            except (TypeError, ValueError):
+                pass
+    return (max_apy / 100.0) if max_apy > 0 else None
+
+
+def _staking_defillama_tvl_ratio(cfg: dict, market_cap_usd: float) -> dict | None:
+    """Approximate staking ratio from liquid-staking / protocol TVL vs token market cap."""
+    ch = cfg.get("defillama_chain") or ""
+    tok = (cfg.get("token") or "").upper()
+    if not ch or market_cap_usd <= 0:
+        return None
+    data = _get("https://yields.llama.fi/pools")
+    if not data or "data" not in data:
+        return None
+    stake_kw = (
+        "stake", "stak", "liquid", "lido", "marinade", "rocket", "benqi", "ankr", "venus", "lista", "twister",
+        "amnis", "ditto", "thala", "helio", "pstake", "binance", "lista-dao", "kinza",
+    )
+    tvl_sum = 0.0
+    max_apy = 0.0
+    for p in data["data"]:
+        if (p.get("chain") or "") != ch:
+            continue
+        sym = (p.get("symbol") or "").upper()
+        if tok and sym != tok and tok not in sym and not sym.endswith(tok):
+            continue
+        proj = (p.get("project") or "").lower()
+        if not any(k in proj for k in stake_kw):
+            continue
+        try:
+            tvl_sum += float(p.get("tvlUsd") or 0)
+            max_apy = max(max_apy, float(p.get("apy") or 0))
+        except (TypeError, ValueError):
+            pass
+    if tvl_sum <= 0:
+        return None
+    ratio = min(0.72, tvl_sum / market_cap_usd)
+    apy_frac = (max_apy / 100.0) if max_apy > 0 else 0.04
+    return {
+        "total_staked_tokens": 0,
+        "staking_ratio": round(ratio, 4),
+        "staking_apy": round(apy_frac, 4),
+    }
+
+
 def _staking_solana_rpc() -> dict | None:
     """Approximate SOL staking ratio from vote-activated stake vs circulating supply."""
     acc = _post_json(
@@ -723,17 +1160,30 @@ def _staking_solana_rpc() -> dict | None:
     return {"total_staked_tokens": 0, "staking_ratio": round(ratio, 4), "staking_apy": 0.07}
 
 
-def fetch_staking(cfg: dict, raw_validators: list, price_usd: float) -> dict:
+def fetch_staking(cfg: dict, raw_validators: list, price_usd: float, market_cap_usd: float = 0) -> dict:
     ecosystem = cfg.get("ecosystem", "")
     staking = None
+    mcap = market_cap_usd or 0.0
     if ecosystem == "cosmos":
         staking = _staking_cosmos_lcd(cfg, raw_validators)
     elif ecosystem == "ethereum":
         staking = _staking_ethereum(cfg, price_usd)
     elif ecosystem == "solana":
         staking = _staking_solana_rpc()
+    elif ecosystem == "polygon":
+        staking = _staking_polygon(cfg, price_usd, mcap)
+    elif ecosystem == "sui":
+        staking = _staking_sui_system(cfg, price_usd, mcap)
+    elif ecosystem == "avalanche":
+        staking = _staking_avalanche_weights(raw_validators, price_usd, mcap)
+    elif ecosystem == "aptos":
+        staking = _staking_defillama_tvl_ratio(cfg, mcap) if mcap > 0 else None
+    elif ecosystem == "bnb":
+        staking = _staking_defillama_tvl_ratio(cfg, mcap) if mcap > 0 else None
     if not staking:
         staking = _staking_defillama(cfg)
+    if not staking and ecosystem in ("aptos", "bnb", "polygon", "sui", "avalanche") and mcap > 0:
+        staking = _staking_defillama_tvl_ratio(cfg, mcap)
     if not staking:
         staking = {"total_staked_tokens": 0, "staking_ratio": 0, "staking_apy": 0}
     total_usd = staking["total_staked_tokens"] * price_usd / 1_000_000 if price_usd else 0
@@ -894,18 +1344,38 @@ def fetch_network():
             sources_used.append("near-rpc")
         elif eco == "substrate":
             sources_used.append("subscan" if os.environ.get("SUBSCAN_API_KEY") else "polkadot-npos-estimate")
+        elif eco == "polygon":
+            sources_used.append("polygon-staking-api")
+        elif eco == "sui":
+            sources_used.append("sui-fullnode-rpc")
+        elif eco == "aptos":
+            sources_used.append("aptos-rest-validatorSet")
+        elif eco == "avalanche":
+            sources_used.append("avax-pchain-rpc")
+        elif eco == "bnb":
+            sources_used.append("bsc-parlia-rpc")
         else:
             sources_used.append(eco)
 
     # ── staking ────────────────────────────────────────────────────────────────
-    staking = fetch_staking(cfg, raw_validators, price_data["price_usd"])
+    mcap = float(price_data.get("market_cap_usd") or 0)
+    staking = fetch_staking(cfg, raw_validators, price_data["price_usd"], mcap)
     if staking.get("staking_ratio", 0) > 0 or staking.get("staking_apy", 0) > 0:
-        if cfg["ecosystem"] == "ethereum":
+        eco = cfg["ecosystem"]
+        if eco == "ethereum":
             sources_used.append("defillama-lsd+coingecko-supply")
-        elif cfg["ecosystem"] == "cosmos":
+        elif eco == "cosmos":
             sources_used.append("lcd-staking-pool")
-        elif cfg["ecosystem"] == "solana":
+        elif eco == "solana":
             sources_used.append("solana-rpc-supply")
+        elif eco == "polygon":
+            sources_used.append("polygon-staking-api+defillama-apy")
+        elif eco == "sui":
+            sources_used.append("sui-rpc-totalStake+defillama-apy")
+        elif eco == "avalanche":
+            sources_used.append("avax-pchain-weights+defillama-apy")
+        elif eco in ("aptos", "bnb"):
+            sources_used.append("defillama-yields-tvl")
 
     # ── governance ─────────────────────────────────────────────────────────────
     governance = fetch_governance(cfg)
@@ -931,7 +1401,7 @@ def fetch_network():
         # governance
         "governance_proposals": governance,
         # meta
-        "data_sources_used": sources_used,
+        "data_sources_used": list(dict.fromkeys(sources_used)),
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
@@ -942,11 +1412,17 @@ def fetch_network():
 
 @network_bp.route("/list", methods=["GET"])
 def list_networks():
-    """GET /api/network/list — returns all supported network slugs and display info."""
-    return jsonify({
-        "success": True,
-        "data": [
-            {"slug": k, "display_name": v["display_name"], "token": v["token"]}
-            for k, v in NETWORKS.items()
-        ],
-    })
+    """GET /api/network/list — networks sorted by typical native-token market cap (rank)."""
+    rows = [
+        {
+            "slug": k,
+            "display_name": v["display_name"],
+            "token": v["token"],
+            "market_cap_rank": v.get("market_cap_rank", 99),
+        }
+        for k, v in NETWORKS.items()
+    ]
+    rows.sort(key=lambda r: (r["market_cap_rank"], r["display_name"].lower()))
+    for r in rows:
+        del r["market_cap_rank"]
+    return jsonify({"success": True, "data": rows})
