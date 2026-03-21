@@ -640,7 +640,9 @@ const props = defineProps({
   simulationId: String,  // passed from parent component
   projectData: Object,
   graphData: Object,
-  systemLogs: Array
+  systemLogs: Array,
+  /** When true, POST /prepare includes force_regenerate (full re-prepare) */
+  forceRegeneratePrepare: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status'])
@@ -778,7 +780,8 @@ const startPrepareSimulation = async () => {
     const res = await prepareSimulation({
       simulation_id: props.simulationId,
       use_llm_for_profiles: true,
-      parallel_profile_count: 5
+      parallel_profile_count: 5,
+      force_regenerate: props.forceRegeneratePrepare
     })
     
     if (res.success && res.data) {

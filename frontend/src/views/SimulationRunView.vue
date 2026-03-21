@@ -30,6 +30,15 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
+        <button
+          class="restart-btn"
+          type="button"
+          :disabled="restartBusy"
+          @click="handleRestartStep"
+          title="Stop and restart the simulation run on this page"
+        >
+          ↺ Restart step
+        </button>
       </div>
     </header>
 
@@ -50,6 +59,7 @@
       <!-- Right Panel: Step3 Run Simulation -->
       <div class="panel-wrapper right" :style="rightPanelStyle">
         <Step3Simulation
+          :key="step3Key"
           :simulationId="currentSimulationId"
           :maxRounds="maxRounds"
           :minutesPerRound="minutesPerRound"
@@ -67,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step3Simulation from '../components/Step3Simulation.vue'
@@ -95,6 +105,8 @@ const graphData = ref(null)
 const graphLoading = ref(false)
 const systemLogs = ref([])
 const currentStatus = ref('processing') // processing | completed | error
+const step3Key = ref(0)
+const restartBusy = ref(false)
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -141,6 +153,26 @@ const toggleMaximize = (target) => {
     viewMode.value = 'split'
   } else {
     viewMode.value = target
+  }
+}
+
+const handleRestartStep = async () => {
+  if (restartBusy.value) return
+  restartBusy.value = true
+  addLog('↺ Restarting simulation run on this page…')
+  stopGraphRefresh()
+  try {
+    try {
+      await stopSimulation({ simulation_id: currentSimulationId.value })
+    } catch {
+      /* best-effort stop before remount */
+    }
+    currentStatus.value = 'processing'
+    await nextTick()
+    step3Key.value += 1
+    await loadSimulationData()
+  } finally {
+    restartBusy.value = false
   }
 }
 
@@ -467,4 +499,5 @@ onUnmounted(() => {
   border-right: 1px solid #EAEAEA;
 }
 </style>
+<style src="../assets/process-restart-btn.css"></style>
 

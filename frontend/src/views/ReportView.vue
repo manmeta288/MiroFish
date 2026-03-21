@@ -30,6 +30,15 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
+        <button
+          class="restart-btn"
+          type="button"
+          :disabled="restartBusy"
+          @click="handleRestartStep"
+          title="Reload report generation and streaming logs on this page"
+        >
+          ↺ Restart step
+        </button>
       </div>
     </header>
 
@@ -50,6 +59,7 @@
       <!-- Right Panel: Step4 Generate Report -->
       <div class="panel-wrapper right" :style="rightPanelStyle">
         <Step4Report
+          :key="reportPanelKey"
           :reportId="currentReportId"
           :simulationId="simulationId"
           :systemLogs="systemLogs"
@@ -62,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step4Report from '../components/Step4Report.vue'
@@ -89,6 +99,8 @@ const graphData = ref(null)
 const graphLoading = ref(false)
 const systemLogs = ref([])
 const currentStatus = ref('processing') // processing | completed | error
+const reportPanelKey = ref(0)
+const restartBusy = ref(false)
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -195,6 +207,20 @@ const loadGraph = async (graphId) => {
 const refreshGraph = () => {
   if (projectData.value?.graph_id) {
     loadGraph(projectData.value.graph_id)
+  }
+}
+
+const handleRestartStep = async () => {
+  if (restartBusy.value) return
+  restartBusy.value = true
+  addLog('↺ Restarting report step on this page…')
+  currentStatus.value = 'processing'
+  try {
+    await nextTick()
+    reportPanelKey.value += 1
+    await loadReportData()
+  } finally {
+    restartBusy.value = false
   }
 }
 
@@ -369,3 +395,4 @@ onMounted(() => {
   border-right: 1px solid #EAEAEA;
 }
 </style>
+<style src="../assets/process-restart-btn.css"></style>

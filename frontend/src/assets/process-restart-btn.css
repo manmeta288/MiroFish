@@ -1,0 +1,25 @@
+/* Shared header restart control (imported by all 5 workflow step views) */
+.restart-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: #F44336;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.restart-btn:hover {
+  background: #D32F2F;
+}
+.restart-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

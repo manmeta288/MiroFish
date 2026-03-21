@@ -30,6 +30,15 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
+        <button
+          class="restart-btn"
+          type="button"
+          :disabled="restartBusy"
+          @click="handleRestartStep"
+          title="Re-run environment setup (profiles & config) on this page"
+        >
+          ↺ Restart step
+        </button>
       </div>
     </header>
 
@@ -49,7 +58,9 @@
       <!-- Right Panel: Step2 Environment Setup -->
       <div class="panel-wrapper right" :style="rightPanelStyle">
         <Step2EnvSetup
+          :key="envSetupKey"
           :simulationId="currentSimulationId"
+          :force-regenerate-prepare="forceRegeneratePrepare"
           :projectData="projectData"
           :graphData="graphData"
           :systemLogs="systemLogs"
@@ -64,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step2EnvSetup from '../components/Step2EnvSetup.vue'
@@ -89,6 +100,9 @@ const graphData = ref(null)
 const graphLoading = ref(false)
 const systemLogs = ref([])
 const currentStatus = ref('processing') // processing | completed | error
+const envSetupKey = ref(0)
+const forceRegeneratePrepare = ref(false)
+const restartBusy = ref(false)
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -142,6 +156,23 @@ const handleGoBack = () => {
     router.push({ name: 'Process', params: { projectId: projectData.value.project_id } })
   } else {
     router.push('/')
+  }
+}
+
+const handleRestartStep = async () => {
+  if (restartBusy.value || !currentSimulationId.value) return
+  restartBusy.value = true
+  addLog('↺ Restarting Environment Setup (forced re-prepare)…')
+  currentStatus.value = 'processing'
+  try {
+    forceRegeneratePrepare.value = true
+    await nextTick()
+    envSetupKey.value += 1
+    await nextTick()
+    forceRegeneratePrepare.value = false
+    await loadSimulationData()
+  } finally {
+    restartBusy.value = false
   }
 }
 
@@ -454,4 +485,4 @@ onMounted(async () => {
   border-right: 1px solid #EAEAEA;
 }
 </style>
-
+<style src="../assets/process-restart-btn.css"></style>

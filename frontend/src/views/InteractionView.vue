@@ -30,6 +30,15 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
+        <button
+          class="restart-btn"
+          type="button"
+          :disabled="restartBusy"
+          @click="handleRestartStep"
+          title="Reload deep interaction (report + agents) on this page"
+        >
+          ↺ Restart step
+        </button>
       </div>
     </header>
 
@@ -50,6 +59,7 @@
       <!-- Right Panel: Step5 Deep Interaction -->
       <div class="panel-wrapper right" :style="rightPanelStyle">
         <Step5Interaction
+          :key="interactionPanelKey"
           :reportId="currentReportId"
           :simulationId="simulationId"
           :systemLogs="systemLogs"
@@ -62,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step5Interaction from '../components/Step5Interaction.vue'
@@ -89,6 +99,8 @@ const graphData = ref(null)
 const graphLoading = ref(false)
 const systemLogs = ref([])
 const currentStatus = ref('ready') // ready | processing | completed | error
+const interactionPanelKey = ref(0)
+const restartBusy = ref(false)
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -196,6 +208,20 @@ const loadGraph = async (graphId) => {
 const refreshGraph = () => {
   if (projectData.value?.graph_id) {
     loadGraph(projectData.value.graph_id)
+  }
+}
+
+const handleRestartStep = async () => {
+  if (restartBusy.value) return
+  restartBusy.value = true
+  addLog('↺ Restarting Deep Interaction step on this page…')
+  currentStatus.value = 'ready'
+  try {
+    await nextTick()
+    interactionPanelKey.value += 1
+    await loadReportData()
+  } finally {
+    restartBusy.value = false
   }
 }
 
@@ -371,3 +397,4 @@ onMounted(() => {
   border-right: 1px solid #EAEAEA;
 }
 </style>
+<style src="../assets/process-restart-btn.css"></style>

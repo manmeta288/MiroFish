@@ -34,8 +34,14 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
-        <button v-if="error" class="restart-btn" @click="handleRestart" title="Restart from beginning">
-          ↺ Restart
+        <button
+          class="restart-btn"
+          type="button"
+          :disabled="restartBusy"
+          @click="handleRestart"
+          title="Clear errors and re-run this step from the server state"
+        >
+          ↺ Restart step
         </button>
       </div>
     </header>
@@ -105,6 +111,7 @@ const currentProjectId = ref(route.params.projectId)
 const loading = ref(false)
 const graphLoading = ref(false)
 const error = ref('')
+const restartBusy = ref(false)
 const projectData = ref(null)
 const graphData = ref(null)
 const currentPhase = ref(-1) // -1: Upload, 0: Ontology, 1: Build, 2: Complete
@@ -181,8 +188,28 @@ const handleGoBack = () => {
   }
 }
 
-const handleRestart = () => {
-  router.push('/')
+const handleRestart = async () => {
+  if (restartBusy.value) return
+  restartBusy.value = true
+  error.value = ''
+  addLog('↺ Restarting Map Construction step…')
+  try {
+    stopPolling()
+    stopGraphPolling()
+    if (currentStep.value === 2) {
+      currentStep.value = 1
+      addLog('Returned to Step 1; reloading project.')
+    }
+    buildProgress.value = null
+    ontologyProgress.value = null
+    if (currentProjectId.value === 'new') {
+      await handleNewProject()
+    } else {
+      await loadProject()
+    }
+  } finally {
+    restartBusy.value = false
+  }
 }
 
 // --- Data Logic ---
@@ -558,25 +585,6 @@ onUnmounted(() => {
 
 @keyframes pulse { 50% { opacity: 0.5; } }
 
-.restart-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: #fff;
-  background: #F44336;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-.restart-btn:hover { background: #D32F2F; }
-
 /* Content */
 .content-area {
   flex: 1;
@@ -596,3 +604,4 @@ onUnmounted(() => {
   border-right: 1px solid #EAEAEA;
 }
 </style>
+<style src="../assets/process-restart-btn.css"></style>
