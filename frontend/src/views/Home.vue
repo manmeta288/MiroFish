@@ -231,7 +231,7 @@ const FALLBACK_NETWORKS = [
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
-    const res = await service.get('/network/list')
+    const res = await service.get('/api/network/list')
     if (res.success && res.data && res.data.length > 0) {
       networkList.value = res.data
     } else {
@@ -324,7 +324,7 @@ const onNetworkChange = async () => {
   loadingData.value = true
 
   try {
-    const res = await service.get('/network/fetch', { params: { network: selectedNetwork.value } })
+    const res = await service.get('/api/network/fetch', { params: { network: selectedNetwork.value } })
     if (res.success) {
       networkData.value = res.data
     } else {

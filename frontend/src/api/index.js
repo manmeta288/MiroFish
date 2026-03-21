@@ -1,21 +1,26 @@
 import axios from 'axios'
 
-// Determine the correct API base URL
+/**
+ * API base URL:
+ * - Railway / simulate.nodera.app: one service runs Vite (3000) + Flask (5001). Only 3000 is public.
+ *   Browser must call same-origin `/api/...` so Vite proxies to Flask. `import.meta.env.PROD` is false
+ *   when using `npm run dev`, so we must NOT use localhost:5001 in the browser.
+ * - Local dev: call Flask directly at http://localhost:5001 (paths still include /api/...).
+ * - Optional: set VITE_API_BASE_URL to override (e.g. separate API service).
+ */
 const getApiBaseUrl = () => {
-  // If explicitly set via env var, use that
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL
+  const override = import.meta.env.VITE_API_BASE_URL
+  if (override !== undefined && override !== null && String(override).trim() !== '') {
+    return String(override).replace(/\/$/, '')
   }
-  
-  // In production (Railway), use relative /api path
-  // The frontend should be configured to proxy or the backend should be at same origin
-  if (import.meta.env.PROD) {
-    // Use the current origin for API calls (assumes backend is at /api on same domain)
-    // Or if backend is separate, set VITE_API_BASE_URL env var in Railway
-    return '/api'
+
+  if (typeof window !== 'undefined') {
+    const h = window.location.hostname
+    if (h !== 'localhost' && h !== '127.0.0.1') {
+      return ''
+    }
   }
-  
-  // Development: direct to localhost backend
+
   return 'http://localhost:5001'
 }
 
