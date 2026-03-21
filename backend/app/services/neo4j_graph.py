@@ -1,33 +1,56 @@
 """
-Neo4j图谱服务
-替代Zep Cloud，使用Neo4j作为图数据库后端
+Neo4j graph service — replaces Zep Cloud with a self-hosted Neo4j backend.
 """
 
+import time
 import uuid
 import json
 import logging
 from typing import Dict, Any, List, Optional
 
 from neo4j import GraphDatabase
+from neo4j.exceptions import ServiceUnavailable
 
 from ..config import Config
 
 logger = logging.getLogger('mirofish.neo4j_graph')
 
+_CONNECT_RETRIES = 5
+_CONNECT_BACKOFF = 3  # seconds between retries
+
 
 class Neo4jGraphService:
-    """
-    Neo4j图谱服务
-    负责图谱的创建、实体/关系存储、搜索和删除
-    """
+    """Manages graph lifecycle and entity/relationship storage in Neo4j."""
 
     def __init__(self):
         uri = Config.NEO4J_URI
         user = Config.NEO4J_USER
         password = Config.NEO4J_PASSWORD
         if not password:
-            raise ValueError("NEO4J_PASSWORD 未配置")
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+            raise ValueError("NEO4J_PASSWORD is not configured")
+
+        last_exc = None
+        for attempt in range(1, _CONNECT_RETRIES + 1):
+            try:
+                self.driver = GraphDatabase.driver(uri, auth=(user, password))
+                # verify connectivity immediately
+                self.driver.verify_connectivity()
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Neo4j connection attempt %d/%d failed: %s — retrying in %ds",
+                    attempt, _CONNECT_RETRIES, exc, _CONNECT_BACKOFF
+                )
+                if attempt < _CONNECT_RETRIES:
+                    time.sleep(_CONNECT_BACKOFF)
+        else:
+            raise ServiceUnavailable(
+                f"Cannot connect to Neo4j at {uri} after {_CONNECT_RETRIES} attempts. "
+                f"Check that the Neo4j service is running and NEO4J_URI is correct. "
+                f"Last error: {last_exc}"
+            )
+
         self._ensure_schema()
 
     def close(self):
@@ -54,7 +77,7 @@ class Neo4jGraphService:
                 "CREATE (g:MFGraph {id: $id, name: $name, created_at: datetime()})",
                 id=graph_id, name=name
             )
-        logger.info(f"图谱已创建: {graph_id}")
+        logger.info(f"Graph created: {graph_id}")
         return graph_id
 
     def delete_graph(self, graph_id: str):
@@ -75,7 +98,7 @@ class Neo4jGraphService:
                 "MATCH (g:MFGraph {id: $gid}) DELETE g",
                 gid=graph_id
             )
-        logger.info(f"图谱已删除: {graph_id}")
+        logger.info(f"Graph deleted: {graph_id}")
 
     # ──────────────────────── Write ────────────────────────
 

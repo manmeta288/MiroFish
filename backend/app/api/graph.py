@@ -374,11 +374,11 @@ def build_graph():
         def build_task():
             build_logger = get_logger('mirofish.build')
             try:
-                build_logger.info(f"[{task_id}] 开始构建图谱...")
+                build_logger.info(f"[{task_id}] Starting graph build…")
                 task_manager.update_task(
                     task_id, 
                     status=TaskStatus.PROCESSING,
-                    message="初始化图谱构建服务..."
+                    message="Initialising map building service…"
                 )
                 
                 # 创建图谱构建服务
@@ -387,7 +387,7 @@ def build_graph():
                 # 分块
                 task_manager.update_task(
                     task_id,
-                    message="文本分块中...",
+                    message="Chunking text…",
                     progress=5
                 )
                 chunks = TextProcessor.split_text(
@@ -400,7 +400,7 @@ def build_graph():
                 # 创建图谱
                 task_manager.update_task(
                     task_id,
-                    message="创建Zep图谱...",
+                    message="Creating graph…",
                     progress=10
                 )
                 graph_id = builder.create_graph(name=graph_name)
@@ -412,7 +412,7 @@ def build_graph():
                 # 设置本体
                 task_manager.update_task(
                     task_id,
-                    message="设置本体定义...",
+                    message="Applying ontology…",
                     progress=15
                 )
                 builder.set_ontology(graph_id, ontology)
@@ -428,7 +428,7 @@ def build_graph():
                 
                 task_manager.update_task(
                     task_id,
-                    message=f"开始添加 {total_chunks} 个文本块...",
+                    message=f"Starting to add {total_chunks} text chunks…",
                     progress=15
                 )
                 
@@ -442,7 +442,7 @@ def build_graph():
                 # 等待Zep处理完成（查询每个episode的processed状态）
                 task_manager.update_task(
                     task_id,
-                    message="写入图谱数据...",
+                    message="Writing graph data…",
                     progress=55
                 )
                 
@@ -606,7 +606,7 @@ def delete_graph(graph_id: str):
         
         return jsonify({
             "success": True,
-            "message": f"图谱已删除: {graph_id}"
+            "message": f"Graph deleted: {graph_id}"
         })
         
     except Exception as e:

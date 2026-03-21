@@ -205,10 +205,10 @@ class GraphBuilderService:
         batch_size: int,
     ):
         try:
-            self.task_manager.update_task(task_id, status=TaskStatus.PROCESSING, progress=5, message="开始构建图谱...")
+            self.task_manager.update_task(task_id, status=TaskStatus.PROCESSING, progress=5, message="Starting graph build…")
 
             graph_id = self.create_graph(graph_name)
-            self.task_manager.update_task(task_id, progress=10, message=f"图谱已创建: {graph_id}")
+            self.task_manager.update_task(task_id, progress=10, message=f"Graph created: {graph_id}")
 
             self.set_ontology(graph_id, ontology)
             self.task_manager.update_task(task_id, progress=15, message="本体已设置")

@@ -36,11 +36,11 @@
             <span 
               class="status-icon" 
               :class="{ available: project.project_id, unavailable: !project.project_id }"
-              title="图谱构建"
+              title="Map Construction"
             >◇</span>
             <span 
               class="status-icon available" 
-              title="环境搭建"
+              title="Environment Setup"
             >◈</span>
             <span 
               class="status-icon" 
@@ -67,7 +67,7 @@
             </div>
             <!-- 如果有更多文件，显示提示 -->
             <div v-if="project.files.length > 3" class="files-more">
-              +{{ project.files.length - 3 }} 个文件
+              +{{ project.files.length - 3 }}文件
             </div>
           </div>
           <!-- 无文件时的占位 -->
@@ -77,10 +77,10 @@
           </div>
         </div>
 
-        <!-- 卡片标题（使用模拟需求的前20字作为标题） -->
+        <!-- 卡片标题（使用Simulation需求的前20字作为标题） -->
         <h3 class="card-title">{{ getSimulationTitle(project.simulation_requirement) }}</h3>
 
-        <!-- 卡片描述（模拟需求完整展示） -->
+        <!-- 卡片描述（Simulation需求完整展示） -->
         <p class="card-desc">{{ truncateText(project.simulation_requirement, 55) }}</p>
 
         <!-- 卡片底部 -->
@@ -99,7 +99,7 @@
       </div>
     </div>
 
-    <!-- 加载状态 -->
+    <!-- Loading state -->
     <div v-if="loading" class="loading-state">
       <span class="loading-spinner"></span>
       <span class="loading-text">加载中...</span>
@@ -124,9 +124,9 @@
 
             <!-- 弹窗内容 -->
             <div class="modal-body">
-              <!-- 模拟需求 -->
+              <!-- Simulation需求 -->
               <div class="modal-section">
-                <div class="modal-label">模拟需求</div>
+                <div class="modal-label">Simulation需求</div>
                 <div class="modal-requirement">{{ selectedProject.simulation_requirement || '无' }}</div>
               </div>
 
@@ -159,7 +159,7 @@
               >
                 <span class="btn-step">Step1</span>
                 <span class="btn-icon">◇</span>
-                <span class="btn-text">图谱构建</span>
+                <span class="btn-text">Map Construction</span>
               </button>
               <button 
                 class="modal-btn btn-simulation" 
@@ -167,7 +167,7 @@
               >
                 <span class="btn-step">Step2</span>
                 <span class="btn-icon">◈</span>
-                <span class="btn-text">环境搭建</span>
+                <span class="btn-text">Environment Setup</span>
               </button>
               <button 
                 class="modal-btn btn-report" 
@@ -181,7 +181,7 @@
             </div>
             <!-- 不可回放提示 -->
             <div class="modal-playback-hint">
-              <span class="hint-text">Step3「开始模拟」与 Step5「深度互动」需在运行中启动，不支持历史回放</span>
+              <span class="hint-text">Step3「Run Simulation」与 Step5「Deep Interaction」需在运行中启动，不支持历史回放</span>
             </div>
           </div>
         </div>
@@ -297,10 +297,10 @@ const getProgressClass = (simulation) => {
     // 未开始
     return 'not-started'
   } else if (current >= total) {
-    // 已完成
+    // Completed
     return 'completed'
   } else {
-    // 进行中
+    // Active
     return 'in-progress'
   }
 }
@@ -335,9 +335,9 @@ const truncateText = (text, maxLength) => {
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
 }
 
-// 从模拟需求生成标题（取前20字）
+// 从Simulation需求生成标题（取前20字）
 const getSimulationTitle = (requirement) => {
-  if (!requirement) return '未命名模拟'
+  if (!requirement) return '未命名Simulation'
   const title = requirement.slice(0, 20)
   return requirement.length > 20 ? title + '...' : title
 }
@@ -354,7 +354,7 @@ const formatRounds = (simulation) => {
   const current = simulation.current_round || 0
   const total = simulation.total_rounds || 0
   if (total === 0) return '未开始'
-  return `${current}/${total} 轮`
+  return `${current}/${total} rounds`
 }
 
 // 获取文件类型（用于样式）
@@ -401,7 +401,7 @@ const closeModal = () => {
   selectedProject.value = null
 }
 
-// 导航到图谱构建页面（Project）
+// 导航到Map Construction页面（Project）
 const goToProject = () => {
   if (selectedProject.value?.project_id) {
     router.push({
@@ -450,7 +450,7 @@ const loadHistory = async () => {
   }
 }
 
-// 初始化 IntersectionObserver
+// Initializing IntersectionObserver
 const initObserver = () => {
   if (observer) {
     observer.disconnect()
@@ -543,7 +543,7 @@ onMounted(async () => {
   await nextTick()
   await loadHistory()
   
-  // 等待 DOM 渲染后初始化观察器
+  // Waiting DOM 渲染后Initializing观察器
   setTimeout(() => {
     initObserver()
   }, 100)
@@ -721,8 +721,8 @@ onUnmounted(() => {
 }
 
 /* 不同功能的颜色 */
-.status-icon:nth-child(1).available { color: #3B82F6; } /* 图谱构建 - 蓝色 */
-.status-icon:nth-child(2).available { color: #F59E0B; } /* 环境搭建 - 橙色 */
+.status-icon:nth-child(1).available { color: #3B82F6; } /* Map Construction - 蓝色 */
+.status-icon:nth-child(2).available { color: #F59E0B; } /* Environment Setup - 橙色 */
 .status-icon:nth-child(3).available { color: #10B981; } /* 分析报告 - 绿色 */
 
 .status-icon.unavailable {
@@ -730,7 +730,7 @@ onUnmounted(() => {
   opacity: 0.5;
 }
 
-/* 轮数进度显示 */
+/* rounds数进度显示 */
 .card-progress {
   display: flex;
   align-items: center;
@@ -745,8 +745,8 @@ onUnmounted(() => {
 }
 
 /* 进度状态颜色 */
-.card-progress.completed { color: #10B981; }    /* 已完成 - 绿色 */
-.card-progress.in-progress { color: #F59E0B; }  /* 进行中 - 橙色 */
+.card-progress.completed { color: #10B981; }    /* Completed - 绿色 */
+.card-progress.in-progress { color: #F59E0B; }  /* Active - 橙色 */
 .card-progress.not-started { color: #9CA3AF; }  /* 未开始 - 灰色 */
 .card-status.pending { color: #9CA3AF; }
 
@@ -1175,7 +1175,7 @@ onUnmounted(() => {
   padding-right: 4px;
 }
 
-/* 自定义滚动条样式 */
+/* CustomScrollbar styles */
 .modal-files::-webkit-scrollbar {
   width: 4px;
 }

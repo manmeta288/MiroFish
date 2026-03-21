@@ -42,8 +42,10 @@
           <span class="hero-title-accent">Before It Breaks</span>
         </h1>
         <p class="hero-sub">
-          Select a blockchain network. Fetch live intelligence. Run a targeted
-          simulation. Know your exposure before the market does.
+          Select a blockchain network.<br />
+          Fetch live intelligence.<br />
+          Run a targeted simulation.<br />
+          Know your exposure before the market does.
         </p>
       </div>
     </section>

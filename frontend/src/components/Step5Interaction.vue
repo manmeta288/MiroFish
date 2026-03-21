@@ -58,7 +58,7 @@
                       <path d="M12 2a10 10 0 0 1 10 10" stroke-width="4" stroke="#4B5563" stroke-linecap="round"></path>
                     </svg>
                   </div>
-                  <span class="loading-text">正在生成{{ section.title }}...</span>
+                  <span class="loading-text">Generating{{ section.title }}...</span>
                 </div>
               </div>
             </div>
@@ -98,7 +98,7 @@
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
               </svg>
-              <span>与Report Agent对话</span>
+              <span>Chat with Report Agent</span>
             </button>
             <div class="agent-dropdown" v-if="profiles.length > 0">
               <button 
@@ -110,13 +110,13 @@
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                <span>{{ selectedAgent ? selectedAgent.username : '与世界中任意个体对话' }}</span>
+                <span>{{ selectedAgent ? selectedAgent.username : 'Chat with any agent in the world' }}</span>
                 <svg class="dropdown-arrow" :class="{ open: showAgentDropdown }" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </button>
               <div v-if="showAgentDropdown" class="dropdown-menu">
-                <div class="dropdown-header">选择对话对象</div>
+                <div class="dropdown-header">Select Agent</div>
                 <div 
                   v-for="(agent, idx) in profiles" 
                   :key="idx"
@@ -126,7 +126,7 @@
                   <div class="agent-avatar">{{ (agent.username || 'A')[0] }}</div>
                   <div class="agent-info">
                     <span class="agent-name">{{ agent.username }}</span>
-                    <span class="agent-role">{{ agent.profession || '未知职业' }}</span>
+                    <span class="agent-role">{{ agent.profession || 'Unknown Role' }}</span>
                   </div>
                 </div>
               </div>
@@ -141,7 +141,7 @@
                 <path d="M9 11l3 3L22 4"></path>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
               </svg>
-              <span>发送问卷调查到世界中</span>
+              <span>Send survey to the world</span>
             </button>
           </div>
         </div>
@@ -172,8 +172,8 @@
                     </svg>
                   </div>
                   <div class="tool-content">
-                    <div class="tool-name">InsightForge 深度归因</div>
-                    <div class="tool-desc">对齐现实世界种子数据与模拟环境状态，结合Global/Local Memory机制，提供跨时空的深度归因分析</div>
+                    <div class="tool-name">InsightForge Deep Attribution</div>
+                    <div class="tool-desc">Aligns real-world seed data with simulation state using Global/Local Memory for cross-temporal attribution.</div>
                   </div>
                 </div>
                 <div class="tool-item tool-blue">
@@ -184,8 +184,8 @@
                     </svg>
                   </div>
                   <div class="tool-content">
-                    <div class="tool-name">PanoramaSearch 全景追踪</div>
-                    <div class="tool-desc">基于图结构的广度遍历算法，重构事件传播路径，捕获全量信息流动的拓扑结构</div>
+                    <div class="tool-name">PanoramaSearch Panoramic Tracking</div>
+                    <div class="tool-desc">Graph-based breadth traversal to reconstruct event propagation paths and information flow topology.</div>
                   </div>
                 </div>
                 <div class="tool-item tool-orange">
@@ -195,8 +195,8 @@
                     </svg>
                   </div>
                   <div class="tool-content">
-                    <div class="tool-name">QuickSearch 快速检索</div>
-                    <div class="tool-desc">基于 GraphRAG 的即时查询接口，优化索引效率，用于快速提取具体的节点属性与离散事实</div>
+                    <div class="tool-name">QuickSearch Fast Retrieval</div>
+                    <div class="tool-desc">GraphRAG instant query interface for fast extraction of node attributes and discrete facts.</div>
                   </div>
                 </div>
                 <div class="tool-item tool-green">
@@ -208,8 +208,8 @@
                     </svg>
                   </div>
                   <div class="tool-content">
-                    <div class="tool-name">InterviewSubAgent 虚拟访谈</div>
-                    <div class="tool-desc">自主式访谈，能够并行与模拟世界中个体进行多轮对话，采集非结构化的观点数据与心理状态</div>
+                    <div class="tool-name">InterviewSubAgent Virtual Interview</div>
+                    <div class="tool-desc">Autonomous interviews with simulation agents to collect unstructured opinions and psychological states.</div>
                   </div>
                 </div>
               </div>
@@ -224,7 +224,7 @@
                 <div class="profile-card-name">{{ selectedAgent.username }}</div>
                 <div class="profile-card-meta">
                   <span v-if="selectedAgent.name" class="profile-card-handle">@{{ selectedAgent.name }}</span>
-                  <span class="profile-card-profession">{{ selectedAgent.profession || '未知职业' }}</span>
+                  <span class="profile-card-profession">{{ selectedAgent.profession || 'Unknown Role' }}</span>
                 </div>
               </div>
               <button class="profile-card-toggle" @click="showFullProfile = !showFullProfile">
@@ -250,7 +250,7 @@
                 </svg>
               </div>
               <p class="empty-text">
-                {{ chatTarget === 'report_agent' ? '与 Report Agent 对话，深入了解报告内容' : '与模拟个体对话，了解他们的观点' }}
+                {{ chatTarget === 'report_agent' ? '与 Report Agent 对话，深入了解报告内容' : '与Simulation个体对话，了解他们的观点' }}
               </p>
             </div>
             <div 
@@ -335,7 +335,7 @@
                   <div class="checkbox-avatar">{{ (agent.username || 'A')[0] }}</div>
                   <div class="checkbox-info">
                     <span class="checkbox-name">{{ agent.username }}</span>
-                    <span class="checkbox-role">{{ agent.profession || '未知职业' }}</span>
+                    <span class="checkbox-role">{{ agent.profession || 'Unknown Role' }}</span>
                   </div>
                   <div class="checkbox-indicator">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3">
@@ -377,7 +377,7 @@
           <div v-if="surveyResults.length > 0" class="survey-results">
             <div class="results-header">
               <span class="results-title">调查结果</span>
-              <span class="results-count">{{ surveyResults.length }} 条回复</span>
+              <span class="results-count">{{ surveyResults.length }}回复</span>
             </div>
             <div class="results-list">
               <div 
@@ -389,7 +389,7 @@
                   <div class="result-avatar">{{ (result.agent_name || 'A')[0] }}</div>
                   <div class="result-info">
                     <span class="result-name">{{ result.agent_name }}</span>
-                    <span class="result-role">{{ result.profession || '未知职业' }}</span>
+                    <span class="result-role">{{ result.profession || 'Unknown Role' }}</span>
                   </div>
                 </div>
                 <div class="result-question">
@@ -535,7 +535,7 @@ const selectAgent = (agent, idx) => {
   
   // 恢复该 Agent 的对话记录
   chatHistory.value = chatHistoryCache.value[`agent_${idx}`] || []
-  addLog(`选择对话对象: ${agent.username}`)
+  addLog(`Select Agent: ${agent.username}`)
 }
 
 const formatTime = (timestamp) => {
@@ -708,7 +708,7 @@ const sendToReportAgent = async (message) => {
 
 const sendToAgent = async (message) => {
   if (!selectedAgent.value || selectedAgentIndex.value === null) {
-    throw new Error('请先选择一个模拟个体')
+    throw new Error('请先选择一个Simulation个体')
   }
   
   addLog(`向 ${selectedAgent.value.username} 发送: ${message.substring(0, 50)}...`)
@@ -803,7 +803,7 @@ const submitSurvey = async () => {
   if (selectedAgents.value.size === 0 || !surveyQuestion.value.trim()) return
   
   isSurveying.value = true
-  addLog(`发送问卷给 ${selectedAgents.value.size} 个对象...`)
+  addLog(`发送问卷给 ${selectedAgents.value.size}对象...`)
   
   try {
     const interviews = Array.from(selectedAgents.value).map(idx => ({
@@ -857,7 +857,7 @@ const submitSurvey = async () => {
       }
       
       surveyResults.value = surveyResultsList
-      addLog(`收到 ${surveyResults.value.length} 条回复`)
+      addLog(`收到 ${surveyResults.value.length}回复`)
     } else {
       throw new Error(res.error || '请求失败')
     }
@@ -918,10 +918,10 @@ const loadProfiles = async () => {
     const res = await getSimulationProfilesRealtime(props.simulationId, 'reddit')
     if (res.success && res.data) {
       profiles.value = res.data.profiles || []
-      addLog(`加载了 ${profiles.value.length} 个模拟个体`)
+      addLog(`加载了 ${profiles.value.length}Simulation个体`)
     }
   } catch (err) {
-    addLog(`加载模拟个体失败: ${err.message}`)
+    addLog(`加载Simulation个体失败: ${err.message}`)
   }
 }
 
@@ -935,7 +935,7 @@ const handleClickOutside = (e) => {
 
 // Lifecycle
 onMounted(() => {
-  addLog('Step5 深度互动初始化')
+  addLog('Step5 Deep InteractionInitializing')
   loadReportData()
   loadProfiles()
   document.addEventListener('click', handleClickOutside)
