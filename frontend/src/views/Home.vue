@@ -89,19 +89,19 @@
           </div>
           <div class="data-pill">
             <span class="pill-label">Validators</span>
-            <span class="pill-value">{{ networkData.validator_count || '—' }}</span>
+            <span class="pill-value">{{ formatMetricInt(networkData.validator_count) }}</span>
           </div>
           <div class="data-pill nakamoto">
             <span class="pill-label">Nakamoto Coefficient</span>
-            <span class="pill-value pill-red">{{ networkData.nakamoto_coefficient || '—' }}</span>
+            <span class="pill-value pill-red">{{ formatMetricInt(networkData.nakamoto_coefficient) }}</span>
           </div>
           <div class="data-pill">
             <span class="pill-label">Staking Ratio</span>
-            <span class="pill-value">{{ networkData.staking_ratio ? (networkData.staking_ratio * 100).toFixed(1) + '%' : '—' }}</span>
+            <span class="pill-value">{{ formatPercentRatio(networkData.staking_ratio) }}</span>
           </div>
           <div class="data-pill">
             <span class="pill-label">APY</span>
-            <span class="pill-value">{{ networkData.staking_apy ? (networkData.staking_apy * 100).toFixed(1) + '%' : '—' }}</span>
+            <span class="pill-value">{{ formatPercentRatio(networkData.staking_apy) }}</span>
           </div>
           <div class="data-pill">
             <span class="pill-label">Sources</span>
@@ -364,6 +364,22 @@ const formatPrice = (p) => {
   if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 })
   if (p >= 1) return p.toFixed(2)
   return p.toFixed(4)
+}
+
+/** Integers (validators, nakamoto): 0 is valid; only null/undefined → — */
+const formatMetricInt = (n) => {
+  if (n === null || n === undefined) return '—'
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '—'
+  return String(Math.round(v))
+}
+
+/** Ratio fields stored as 0–1 (staking_ratio, staking_apy) */
+const formatPercentRatio = (r) => {
+  if (r === null || r === undefined) return '—'
+  const v = Number(r)
+  if (!Number.isFinite(v)) return '—'
+  return (v * 100).toFixed(1) + '%'
 }
 </script>
 
