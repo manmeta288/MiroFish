@@ -23,7 +23,7 @@ from ..utils.logger import get_logger
 from .zep_graph_memory_updater import ZepGraphMemoryManager
 from .simulation_ipc import SimulationIPCClient, CommandType, IPCResponse
 
-logger = get_logger('mirofish.simulation_runner')
+logger = get_logger('nodera.simulation_runner')
 
 # 标记是否已注册清理函数
 _cleanup_registered = False
@@ -228,14 +228,28 @@ class SimulationRunner:
     
     @classmethod
     def get_run_state(cls, simulation_id: str) -> Optional[SimulationRunState]:
-        """获取运行状态"""
-        if simulation_id in cls._run_states:
-            return cls._run_states[simulation_id]
-        
-        # 尝试从文件加载
+        """获取运行状态。
+
+        本子进程若正在托管该 simulation 的 subprocess（监控线程在更新同一内存对象），
+        直接返回内存状态即可。
+
+        否则（Gunicorn 多 worker、Railway 多实例、或负载均衡打到不同机器）必须从磁盘
+        重新加载 run_state.json。旧逻辑在「首次从文件加载」后永久缓存，会导致轮询永远
+        停在第一次快照（例如 Round 0），而 actions.jsonl 仍在增长。
+        """
+        owns_subprocess = simulation_id in cls._processes
+
+        if owns_subprocess:
+            cached = cls._run_states.get(simulation_id)
+            if cached is not None:
+                return cached
+
         state = cls._load_run_state(simulation_id)
-        if state:
+        if state is not None:
             cls._run_states[simulation_id] = state
+        elif simulation_id in cls._run_states and not owns_subprocess:
+            cls._run_states.pop(simulation_id, None)
+
         return state
     
     @classmethod

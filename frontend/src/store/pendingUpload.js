@@ -1,6 +1,6 @@
 /**
  * Temporary store for pending upload files and requirements
- * Used for immediate navigation to Process page after launch，在Process页面再进行API调用
+ * Used for immediate navigation to Process page after launch，API calls are made in the Process page
  */
 import { reactive } from 'vue'
 

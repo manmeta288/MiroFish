@@ -13,7 +13,7 @@ from neo4j.exceptions import ServiceUnavailable
 
 from ..config import Config
 
-logger = logging.getLogger('mirofish.neo4j_graph')
+logger = logging.getLogger('nodera.neo4j_graph')
 
 _CONNECT_RETRIES = 5
 _CONNECT_BACKOFF = 3  # seconds between retries
@@ -22,7 +22,7 @@ _AUTH_HELP = (
     "Neo4j rejected the username/password (Neo.ClientError.Security.Unauthorized). "
     "Fix: (1) URI must be bolt://hostname:7687 — not olt://. "
     "(2) On the Neo4j Railway service use NEO4J_AUTH=neo4j/yourpassword. "
-    "On MiroFish set either the same NEO4J_AUTH (reference the Neo4j variable) OR "
+    "On Nodera Simulate set either the same NEO4J_AUTH (reference the Neo4j variable) OR "
     "NEO4J_PASSWORD equal to the part after the slash only. "
     "(3) If you changed NEO4J_AUTH after the DB first started, the password inside the "
     "persisted volume may still be the old one — reset the Neo4j password or recreate the volume."
@@ -97,9 +97,9 @@ class Neo4jGraphService:
     def _ensure_schema(self):
         with self.driver.session() as session:
             for cypher in [
-                "CREATE CONSTRAINT mf_graph_id IF NOT EXISTS FOR (g:MFGraph) REQUIRE g.id IS UNIQUE",
-                "CREATE CONSTRAINT mf_entity_uuid IF NOT EXISTS FOR (n:MFEntity) REQUIRE n.uuid IS UNIQUE",
-                "CREATE INDEX mf_entity_name IF NOT EXISTS FOR (n:MFEntity) ON (n.name, n.graph_id)",
+                "CREATE CONSTRAINT mf_graph_id IF NOT EXISTS FOR (g:NDGraph) REQUIRE g.id IS UNIQUE",
+                "CREATE CONSTRAINT mf_entity_uuid IF NOT EXISTS FOR (n:NDEntity) REQUIRE n.uuid IS UNIQUE",
+                "CREATE INDEX mf_entity_name IF NOT EXISTS FOR (n:NDEntity) ON (n.name, n.graph_id)",
             ]:
                 try:
                     session.run(cypher)
@@ -109,10 +109,10 @@ class Neo4jGraphService:
     # ──────────────────────── Graph lifecycle ────────────────────────
 
     def create_graph(self, name: str) -> str:
-        graph_id = f"mirofish_{uuid.uuid4().hex[:16]}"
+        graph_id = f"nodera_{uuid.uuid4().hex[:16]}"
         with self.driver.session() as session:
             session.run(
-                "CREATE (g:MFGraph {id: $id, name: $name, created_at: datetime()})",
+                "CREATE (g:NDGraph {id: $id, name: $name, created_at: datetime()})",
                 id=graph_id, name=name
             )
         logger.info(f"Graph created: {graph_id}")
@@ -121,19 +121,19 @@ class Neo4jGraphService:
     def delete_graph(self, graph_id: str):
         with self.driver.session() as session:
             session.run(
-                "MATCH (s:MFEntity {graph_id: $gid})-[r:MF_RELATES]->(t:MFEntity {graph_id: $gid}) DELETE r",
+                "MATCH (s:NDEntity {graph_id: $gid})-[r:ND_RELATES]->(t:NDEntity {graph_id: $gid}) DELETE r",
                 gid=graph_id
             )
             session.run(
-                "MATCH (g:MFGraph {id: $gid})-[r:MF_HAS_ENTITY]->() DELETE r",
+                "MATCH (g:NDGraph {id: $gid})-[r:ND_HAS_ENTITY]->() DELETE r",
                 gid=graph_id
             )
             session.run(
-                "MATCH (n:MFEntity {graph_id: $gid}) DELETE n",
+                "MATCH (n:NDEntity {graph_id: $gid}) DELETE n",
                 gid=graph_id
             )
             session.run(
-                "MATCH (g:MFGraph {id: $gid}) DELETE g",
+                "MATCH (g:NDGraph {id: $gid}) DELETE g",
                 gid=graph_id
             )
         logger.info(f"Graph deleted: {graph_id}")
@@ -168,8 +168,8 @@ class Neo4jGraphService:
 
                 session.run(
                     """
-                    MATCH (g:MFGraph {id: $gid})
-                    MERGE (n:MFEntity {name: $name, graph_id: $gid})
+                    MATCH (g:NDGraph {id: $gid})
+                    MERGE (n:NDEntity {name: $name, graph_id: $gid})
                     ON CREATE SET
                         n.uuid       = $uuid,
                         n.summary    = $summary,
@@ -180,7 +180,7 @@ class Neo4jGraphService:
                         n.summary    = CASE WHEN $summary <> '' THEN $summary ELSE n.summary END,
                         n.labels     = $labels
                     WITH n, g
-                    MERGE (g)-[:MF_HAS_ENTITY]->(n)
+                    MERGE (g)-[:ND_HAS_ENTITY]->(n)
                     """,
                     gid=graph_id,
                     name=name,
@@ -199,9 +199,9 @@ class Neo4jGraphService:
 
                 session.run(
                     """
-                    MATCH (s:MFEntity {name: $src, graph_id: $gid})
-                    MATCH (t:MFEntity {name: $tgt, graph_id: $gid})
-                    CREATE (s)-[r:MF_RELATES {
+                    MATCH (s:NDEntity {name: $src, graph_id: $gid})
+                    MATCH (t:NDEntity {name: $tgt, graph_id: $gid})
+                    CREATE (s)-[r:ND_RELATES {
                         uuid:       $uuid,
                         name:       $name,
                         fact:       $fact,
@@ -224,7 +224,7 @@ class Neo4jGraphService:
         with self.driver.session() as session:
             result = session.run(
                 """
-                MATCH (g:MFGraph {id: $gid})-[:MF_HAS_ENTITY]->(n:MFEntity)
+                MATCH (g:NDGraph {id: $gid})-[:ND_HAS_ENTITY]->(n:NDEntity)
                 RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary,
                        n.labels AS labels, n.attributes AS attributes
                 """,
@@ -236,7 +236,7 @@ class Neo4jGraphService:
         with self.driver.session() as session:
             result = session.run(
                 """
-                MATCH (s:MFEntity {graph_id: $gid})-[r:MF_RELATES {graph_id: $gid}]->(t:MFEntity)
+                MATCH (s:NDEntity {graph_id: $gid})-[r:ND_RELATES {graph_id: $gid}]->(t:NDEntity)
                 RETURN r.uuid AS uuid, r.name AS name, r.fact AS fact,
                        s.uuid AS source_uuid, t.uuid AS target_uuid,
                        s.name AS source_name, t.name AS target_name,
@@ -253,7 +253,7 @@ class Neo4jGraphService:
         with self.driver.session() as session:
             result = session.run(
                 """
-                MATCH (n:MFEntity {uuid: $uuid})
+                MATCH (n:NDEntity {uuid: $uuid})
                 RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary,
                        n.labels AS labels, n.attributes AS attributes
                 """,
@@ -266,7 +266,7 @@ class Neo4jGraphService:
         with self.driver.session() as session:
             result = session.run(
                 """
-                MATCH (n:MFEntity {uuid: $uuid})-[r:MF_RELATES]-(other:MFEntity)
+                MATCH (n:NDEntity {uuid: $uuid})-[r:ND_RELATES]-(other:NDEntity)
                 RETURN r.uuid AS uuid, r.name AS name, r.fact AS fact,
                        CASE WHEN startNode(r).uuid = $uuid
                             THEN $uuid ELSE other.uuid END AS source_uuid,
@@ -316,7 +316,7 @@ class Neo4jGraphService:
                 # Full-query match first
                 rows = session.run(
                     """
-                    MATCH (s:MFEntity {graph_id: $gid})-[r:MF_RELATES {graph_id: $gid}]->(t:MFEntity)
+                    MATCH (s:NDEntity {graph_id: $gid})-[r:ND_RELATES {graph_id: $gid}]->(t:NDEntity)
                     WHERE toLower(r.fact) CONTAINS $q OR toLower(r.name) CONTAINS $q
                     RETURN r.uuid AS uuid, r.name AS name, r.fact AS fact,
                            s.uuid AS src_uuid, t.uuid AS tgt_uuid,
@@ -344,7 +344,7 @@ class Neo4jGraphService:
                     for kw in keywords[:4]:
                         kw_rows = session.run(
                             """
-                            MATCH (s:MFEntity {graph_id: $gid})-[r:MF_RELATES {graph_id: $gid}]->(t:MFEntity)
+                            MATCH (s:NDEntity {graph_id: $gid})-[r:ND_RELATES {graph_id: $gid}]->(t:NDEntity)
                             WHERE toLower(r.fact) CONTAINS $kw
                             RETURN r.fact AS fact LIMIT $lim
                             """,
@@ -357,7 +357,7 @@ class Neo4jGraphService:
             if scope in ("nodes", "both"):
                 rows = session.run(
                     """
-                    MATCH (g:MFGraph {id: $gid})-[:MF_HAS_ENTITY]->(n:MFEntity)
+                    MATCH (g:NDGraph {id: $gid})-[:ND_HAS_ENTITY]->(n:NDEntity)
                     WHERE toLower(n.name) CONTAINS $q OR toLower(n.summary) CONTAINS $q
                     RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary,
                            n.labels AS labels
@@ -393,9 +393,9 @@ class Neo4jGraphService:
         with self.driver.session() as session:
             counts = session.run(
                 """
-                MATCH (g:MFGraph {id: $gid})
-                OPTIONAL MATCH (g)-[:MF_HAS_ENTITY]->(n:MFEntity)
-                OPTIONAL MATCH (n)-[r:MF_RELATES {graph_id: $gid}]->(:MFEntity)
+                MATCH (g:NDGraph {id: $gid})
+                OPTIONAL MATCH (g)-[:ND_HAS_ENTITY]->(n:NDEntity)
+                OPTIONAL MATCH (n)-[r:ND_RELATES {graph_id: $gid}]->(:NDEntity)
                 RETURN COUNT(DISTINCT n) AS node_count,
                        COUNT(DISTINCT r) AS edge_count
                 """,
@@ -403,7 +403,7 @@ class Neo4jGraphService:
             ).single()
 
             label_rows = session.run(
-                "MATCH (g:MFGraph {id: $gid})-[:MF_HAS_ENTITY]->(n:MFEntity) RETURN n.labels AS labels",
+                "MATCH (g:NDGraph {id: $gid})-[:ND_HAS_ENTITY]->(n:NDEntity) RETURN n.labels AS labels",
                 gid=graph_id,
             )
             entity_types: set = set()

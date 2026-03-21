@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from .neo4j_graph import Neo4jGraphService
 from ..utils.logger import get_logger
 
-logger = get_logger('mirofish.entity_reader')
+logger = get_logger('nodera.entity_reader')
 
 
 @dataclass

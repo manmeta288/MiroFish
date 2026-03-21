@@ -205,7 +205,7 @@ const selectedOntologyItem = ref(null)
 const logContent = ref(null)
 const creatingSimulation = ref(false)
 
-// 进入Environment Setup - 创建 simulation 并跳转
+// Enter Environment Setup — create simulation and navigate
 const handleEnterEnvSetup = async () => {
   if (!props.projectData?.project_id || !props.projectData?.graph_id) {
     console.error('Missing project or graph info')
@@ -223,18 +223,18 @@ const handleEnterEnvSetup = async () => {
     })
     
     if (res.success && res.data?.simulation_id) {
-      // 跳转到 simulation 页面
+      // Navigate to simulation page
       router.push({
         name: 'Simulation',
         params: { simulationId: res.data.simulation_id }
       })
     } else {
-      console.error('创建Simulation失败:', res.error)
-      alert('创建Simulation失败: ' + (res.error || 'Unknown error'))
+      console.error('Failed to create simulation:', res.error)
+      alert('Failed to create simulation: ' + (res.error || 'Unknown error'))
     }
   } catch (err) {
-    console.error('创建Simulation异常:', err)
-    alert('创建Simulation异常: ' + err.message)
+    console.error('Simulation creation error:', err)
+    alert('Simulation creation error: ' + err.message)
   } finally {
     creatingSimulation.value = false
   }

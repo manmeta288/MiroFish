@@ -27,7 +27,7 @@ const getApiBaseUrl = () => {
 // axios instance
 const service = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 300000, // 5分钟超时（Ontology Generation可能需要较长时间）
+  timeout: 300000, // 5-minute timeout (ontology generation may be slow)
   headers: {
     'Content-Type': 'application/json'
   }

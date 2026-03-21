@@ -18,7 +18,7 @@ from ..utils.logger import get_logger
 from ..utils.llm_client import LLMClient
 from .neo4j_graph import Neo4jGraphService
 
-logger = get_logger('mirofish.zep_tools')
+logger = get_logger('nodera.zep_tools')
 
 
 @dataclass

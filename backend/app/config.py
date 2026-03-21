@@ -31,7 +31,7 @@ def _resolve_neo4j() -> tuple[str, str, str | None, bool]:
     Returns (uri, user, password, auth_disabled).
 
     Supports the same NEO4J_AUTH=username/password format as the official Neo4j Docker image,
-    so MiroFish can reference the Neo4j service variable directly instead of duplicating
+    so Nodera Simulate can reference the Neo4j service variable directly instead of duplicating
     NEO4J_PASSWORD (which often drifts). Password after first '/' (remainder is the password,
     so passwords may contain '/').
     """
@@ -63,7 +63,7 @@ _NEO4J_URI, _NEO4J_USER, _NEO4J_PASSWORD, _NEO4J_AUTH_DISABLED = _resolve_neo4j(
 
 class Config:
     # Flask
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'mirofish-secret-key')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'nodera-secret-key')
     DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
 
     # Return JSON with unicode characters un-escaped

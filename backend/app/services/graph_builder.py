@@ -13,7 +13,7 @@ from .entity_extractor import EntityExtractor
 from .text_processor import TextProcessor
 from ..utils.logger import get_logger
 
-logger = get_logger('mirofish.graph_builder')
+logger = get_logger('nodera.graph_builder')
 
 
 @dataclass
@@ -172,7 +172,7 @@ class GraphBuilderService:
         self,
         text: str,
         ontology: Dict[str, Any],
-        graph_name: str = "MiroFish Graph",
+        graph_name: str = "Nodera Simulate Graph",
         chunk_size: int = 500,
         chunk_overlap: int = 50,
         batch_size: int = 3,

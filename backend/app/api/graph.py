@@ -19,7 +19,7 @@ from ..models.task import TaskManager, TaskStatus
 from ..models.project import ProjectManager, ProjectStatus
 
 # 获取日志器
-logger = get_logger('mirofish.api')
+logger = get_logger('nodera.api')
 
 
 def allowed_file(filename: str) -> bool:
@@ -372,7 +372,7 @@ def build_graph():
         
         # 启动后台任务
         def build_task():
-            build_logger = get_logger('mirofish.build')
+            build_logger = get_logger('nodera.build')
             try:
                 build_logger.info(f"[{task_id}] Starting graph build…")
                 task_manager.update_task(

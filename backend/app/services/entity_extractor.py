@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Optional
 
 from ..utils.llm_client import LLMClient
 
-logger = logging.getLogger('mirofish.entity_extractor')
+logger = logging.getLogger('nodera.entity_extractor')
 
 
 class EntityExtractor:
