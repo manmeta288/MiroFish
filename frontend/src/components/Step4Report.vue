@@ -562,7 +562,7 @@ const parseInsightForge = (text) => {
     // 提取统计数据 - 匹配"相关预测事实: X条"格式
     const factMatch = text.match(/相关预测事实:\s*(\d+)/)
     const entityMatch = text.match(/涉及实体:\s*(\d+)/)
-    const relMatch = text.match(/关系链:\s*(\d+)/)
+    const relMatch = text.match(/ edges链:\s*(\d+)/)
     if (factMatch) result.stats.facts = parseInt(factMatch[1])
     if (entityMatch) result.stats.entities = parseInt(entityMatch[1])
     if (relMatch) result.stats.relationships = parseInt(relMatch[1])
@@ -603,8 +603,8 @@ const parseInsightForge = (text) => {
       }).filter(e => e.name)
     }
     
-    // 提取关系链 - 完整提取，不限制数量
-    const relSection = text.match(/### 【关系链】\n([\s\S]*?)(?=\n###|$)/)
+    // 提取 edges链 - 完整提取，不限制数量
+    const relSection = text.match(/### 【 edges链】\n([\s\S]*?)(?=\n###|$)/)
     if (relSection) {
       const lines = relSection[1].split('\n').filter(l => l.trim().startsWith('-'))
       result.relations = lines.map(l => {
@@ -637,7 +637,7 @@ const parsePanorama = (text) => {
     if (queryMatch) result.query = queryMatch[1].trim()
     
     // 提取统计数据
-    const nodesMatch = text.match(/总节点数:\s*(\d+)/)
+    const nodesMatch = text.match(/总 nodes数:\s*(\d+)/)
     const edgesMatch = text.match(/总边数:\s*(\d+)/)
     const activeMatch = text.match(/当前有效事实:\s*(\d+)/)
     const histMatch = text.match(/历史\/过期事实:\s*(\d+)/)
@@ -937,8 +937,8 @@ const parseQuickSearch = (text) => {
       }).filter(Boolean)
     }
     
-    // 尝试提取节点信息（如果有）
-    const nodesSection = text.match(/### 相关节点:\n([\s\S]*?)(?=\n###|$)/)
+    // 尝试提取 nodes信息（如果有）
+    const nodesSection = text.match(/### 相关 nodes:\n([\s\S]*?)(?=\n###|$)/)
     if (nodesSection) {
       const lines = nodesSection[1].split('\n').filter(l => l.trim().startsWith('-'))
       result.nodes = lines.map(l => {
@@ -1026,7 +1026,7 @@ const InsightDisplay = {
           class: ['insight-tab', { active: activeTab.value === 'relations' }],
           onClick: () => { activeTab.value = 'relations' }
         }, [
-          h('span', { class: 'tab-label' }, `关系链 (${props.result.relations.length})`)
+          h('span', { class: 'tab-label' }, ` edges链 (${props.result.relations.length})`)
         ]),
         props.result.subQueries.length > 0 && h('button', {
           class: ['insight-tab', { active: activeTab.value === 'subqueries' }],
@@ -1082,7 +1082,7 @@ const InsightDisplay = {
         // Relations Tab
         activeTab.value === 'relations' && props.result.relations.length > 0 && h('div', { class: 'relations-panel' }, [
           h('div', { class: 'panel-header' }, [
-            h('span', { class: 'panel-title' }, '关系链'),
+            h('span', { class: 'panel-title' }, ' edges链'),
             h('span', { class: 'panel-count' }, `共 ${props.result.relations.length}`)
           ]),
           h('div', { class: 'relations-list' },
@@ -1123,7 +1123,7 @@ const InsightDisplay = {
         // Empty state
         activeTab.value === 'facts' && props.result.facts.length === 0 && h('div', { class: 'empty-state' }, '暂无当前关键记忆'),
         activeTab.value === 'entities' && props.result.entities.length === 0 && h('div', { class: 'empty-state' }, '暂无核心实体'),
-        activeTab.value === 'relations' && props.result.relations.length === 0 && h('div', { class: 'empty-state' }, '暂无关系链')
+        activeTab.value === 'relations' && props.result.relations.length === 0 && h('div', { class: 'empty-state' }, '暂无 edges链')
       ])
     ])
   }
@@ -1627,13 +1627,13 @@ const QuickSearchDisplay = {
           class: ['quicksearch-tab', { active: activeTab.value === 'edges' }],
           onClick: () => { activeTab.value = 'edges' }
         }, [
-          h('span', { class: 'tab-label' }, `关系 (${props.result.edges.length})`)
+          h('span', { class: 'tab-label' }, ` edges (${props.result.edges.length})`)
         ]),
         hasNodes.value && h('button', {
           class: ['quicksearch-tab', { active: activeTab.value === 'nodes' }],
           onClick: () => { activeTab.value = 'nodes' }
         }, [
-          h('span', { class: 'tab-label' }, `节点 (${props.result.nodes.length})`)
+          h('span', { class: 'tab-label' }, ` nodes (${props.result.nodes.length})`)
         ])
       ]),
       
@@ -1662,7 +1662,7 @@ const QuickSearchDisplay = {
         // Edges Tab
         activeTab.value === 'edges' && hasEdges.value && h('div', { class: 'edges-panel' }, [
           h('div', { class: 'panel-header' }, [
-            h('span', { class: 'panel-title' }, '相关关系'),
+            h('span', { class: 'panel-title' }, '相关 edges'),
             h('span', { class: 'panel-count' }, `共 ${props.result.edges.length}`)
           ]),
           h('div', { class: 'edges-list' },
@@ -1683,7 +1683,7 @@ const QuickSearchDisplay = {
         // Nodes Tab
         activeTab.value === 'nodes' && hasNodes.value && h('div', { class: 'nodes-panel' }, [
           h('div', { class: 'panel-header' }, [
-            h('span', { class: 'panel-title' }, '相关节点'),
+            h('span', { class: 'panel-title' }, '相关 nodes'),
             h('span', { class: 'panel-count' }, `共 ${props.result.nodes.length}`)
           ]),
           h('div', { class: 'nodes-grid' },

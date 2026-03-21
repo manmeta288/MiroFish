@@ -362,13 +362,13 @@ const renderGraph = () => {
   
   const nodeIds = new Set(nodes.map(n => n.id))
   
-  // 处理边数据，计算同一对节点间的边数量和索引
+  // 处理边数据，计算同一对 nodes间的边数量和索引
   const edgePairCount = {}
-  const selfLoopEdges = {} // 按节点分组的自环边
+  const selfLoopEdges = {} // 按 nodes分组的自环边
   const tempEdges = edgesData
     .filter(e => nodeIds.has(e.source_node_uuid) && nodeIds.has(e.target_node_uuid))
   
-  // 统计每对节点之间的边数量，收集自环边
+  // 统计每对 nodes之间的边数量，收集自环边
   tempEdges.forEach(e => {
     if (e.source_node_uuid === e.target_node_uuid) {
       // 自环 - 收集到数组中
@@ -386,9 +386,9 @@ const renderGraph = () => {
     }
   })
   
-  // 记录当前处理到每对节点的第几条边
+  // 记录当前处理到每对 nodes的第几条边
   const edgePairIndex = {}
-  const processedSelfLoopNodes = new Set() // 已处理的自环节点
+  const processedSelfLoopNodes = new Set() // 已处理的自环 nodes
   
   const edges = []
   
@@ -396,7 +396,7 @@ const renderGraph = () => {
     const isSelfLoop = e.source_node_uuid === e.target_node_uuid
     
     if (isSelfLoop) {
-      // 自环边 - 每个节点只添加一条合并的自环
+      // 自环边 - 每个 nodes只添加一条合并的自环
       if (processedSelfLoopNodes.has(e.source_node_uuid)) {
         return // 已处理过，跳过
       }
@@ -468,10 +468,10 @@ const renderGraph = () => {
   entityTypes.value.forEach(t => colorMap[t.name] = t.color)
   const getColor = (type) => colorMap[type] || '#999'
 
-  // Simulation - 根据边数量动态调整节点间距
+  // Simulation - 根据边数量动态调整 nodes间距
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(edges).id(d => d.id).distance(d => {
-      // 根据这对节点之间的边数量动态调整距离
+      // 根据这对 nodes之间的边数量动态调整距离
       // 基础距离 150，每多一条边增加 40
       const baseDistance = 150
       const edgeCount = d.pairTotal || 1
@@ -480,7 +480,7 @@ const renderGraph = () => {
     .force('charge', d3.forceManyBody().strength(-400))
     .force('center', d3.forceCenter(width / 2, height / 2))
     .force('collide', d3.forceCollide(50))
-    // 添加向中心的引力，让独立的节点群聚集到中心区域
+    // 添加向中心的引力，让独立的 nodes群聚集到中心区域
     .force('x', d3.forceX(width / 2).strength(0.04))
     .force('y', d3.forceY(height / 2).strength(0.04))
   
@@ -503,9 +503,9 @@ const renderGraph = () => {
     
     // 检测自环
     if (d.isSelfLoop) {
-      // 自环：绘制一个圆弧从节点出发再返回
+      // 自环：绘制一个圆弧从 nodes出发再返回
       const loopRadius = 30
-      // 从节点右侧出发，绕一圈回来
+      // 从 nodes右侧出发，绕一圈回来
       const x1 = sx + 8  // 起点偏移
       const y1 = sy - 4
       const x2 = sx + 8  // 终点偏移
@@ -542,7 +542,7 @@ const renderGraph = () => {
     
     // 检测自环
     if (d.isSelfLoop) {
-      // 自环标签位置：节点右侧
+      // 自环标签位置： nodes右侧
       return { x: sx + 70, y: sy }
     }
     
@@ -697,12 +697,12 @@ const renderGraph = () => {
     )
     .on('click', (event, d) => {
       event.stopPropagation()
-      // 重置所有节点样式
+      // 重置所有 nodes样式
       node.attr('stroke', '#fff').attr('stroke-width', 2.5)
       linkGroup.selectAll('path').attr('stroke', '#C0C0C0').attr('stroke-width', 1.5)
-      // 高亮选中节点
+      // 高亮选中 nodes
       d3.select(event.target).attr('stroke', '#E91E63').attr('stroke-width', 4)
-      // 高亮与此节点相连的边
+      // 高亮与此 nodes相连的边
       link.filter(l => l.source.id === d.id || l.target.id === d.id)
         .attr('stroke', '#E91E63')
         .attr('stroke-width', 2.5)

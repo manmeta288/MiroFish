@@ -34,6 +34,9 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
+        <button v-if="error" class="restart-btn" @click="handleRestart" title="Restart from beginning">
+          ↺ Restart
+        </button>
       </div>
     </header>
 
@@ -165,9 +168,8 @@ const handleNextStep = (params = {}) => {
     currentStep.value++
     addLog(`Entering Step ${currentStep.value}: ${stepNames[currentStep.value - 1]}`)
     
-    // 如果是从 Step 2 进入 Step 3，记录Simulation轮数配置
     if (currentStep.value === 3 && params.maxRounds) {
-      addLog(`CustomSimulation轮数: ${params.maxRounds} rounds`)
+      addLog(`Custom simulation rounds: ${params.maxRounds}`)
     }
   }
 }
@@ -177,6 +179,10 @@ const handleGoBack = () => {
     currentStep.value--
     addLog(`Back to Step ${currentStep.value}: ${stepNames[currentStep.value - 1]}`)
   }
+}
+
+const handleRestart = () => {
+  router.push('/')
 }
 
 // --- Data Logic ---
@@ -251,10 +257,16 @@ const loadProject = async () => {
         await loadGraph(res.data.graph_id)
       }
     } else {
-      error.value = res.error
+      error.value = res.error || 'Project not found'
       addLog(`Error loading project: ${res.error}`)
     }
   } catch (err) {
+    // 404 = project no longer exists on this server; go home
+    if (err?.response?.status === 404 || err?.message?.includes('404')) {
+      addLog(`Project ${currentProjectId.value} not found — redirecting to home.`)
+      router.replace('/')
+      return
+    }
     error.value = err.message
     addLog(`Exception in loadProject: ${err.message}`)
   } finally {
@@ -545,6 +557,25 @@ onUnmounted(() => {
 .status-indicator.error .dot { background: #F44336; }
 
 @keyframes pulse { 50% { opacity: 0.5; } }
+
+.restart-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: #F44336;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.restart-btn:hover { background: #D32F2F; }
 
 /* Content */
 .content-area {

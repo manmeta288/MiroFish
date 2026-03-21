@@ -154,7 +154,7 @@
         </div>
         
         <div class="card-content">
-          <p class="description">Map ConstructionCompleted，请进入下一步进行SimulationEnvironment Setup</p>
+          <p class="description">Knowledge graph built. Proceed to simulation setup.</p>
           <button 
             class="action-btn" 
             :disabled="currentPhase < 2 || creatingSimulation"

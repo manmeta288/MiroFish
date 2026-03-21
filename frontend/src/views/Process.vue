@@ -1,6 +1,6 @@
 <template>
   <div class="process-page">
-    <!-- 顶部导航栏 -->
+    <!-- Top navbar -->
     <nav class="navbar">
       <div class="nav-brand" @click="goHome">
         <span class="brand-dot-sm"></span>
@@ -8,7 +8,7 @@
         <span class="brand-tag-sm">SIMULATE</span>
       </div>
       
-      <!-- 中间步骤指示器 -->
+      <!-- Centre step indicator -->
       <div class="nav-center">
         <div class="step-badge">STEP 01</div>
         <div class="step-name">Map Construction</div>
@@ -20,27 +20,27 @@
       </div>
     </nav>
 
-    <!-- 主内容区 -->
+    <!-- Main content -->
     <div class="main-content">
-      <!-- 左侧: 实时Graph展示 -->
+      <!-- Left: live graph -->
       <div class="left-panel" :class="{ 'full-screen': isFullScreen }">
         <div class="panel-header">
           <div class="header-left">
             <span class="header-deco">◆</span>
-            <span class="header-title">实时知识Graph</span>
+            <span class="header-title">Live Knowledge Graph</span>
           </div>
           <div class="header-right">
             <template v-if="graphData">
-              <span class="stat-item">{{ graphData.node_count || graphData.nodes?.length || 0 }} 节点</span>
+              <span class="stat-item">{{ graphData.node_count || graphData.nodes?.length || 0 }}  nodes</span>
               <span class="stat-divider">|</span>
-              <span class="stat-item">{{ graphData.edge_count || graphData.edges?.length || 0 }} 关系</span>
+              <span class="stat-item">{{ graphData.edge_count || graphData.edges?.length || 0 }}  edges</span>
               <span class="stat-divider">|</span>
             </template>
             <div class="action-buttons">
                 <button class="action-btn" @click="refreshGraph" :disabled="graphLoading" title="Refresh Graph">
                   <span class="icon-refresh" :class="{ 'spinning': graphLoading }">↻</span>
                 </button>
-                <button class="action-btn" @click="toggleFullScreen" :title="isFullScreen ? '退出全屏' : '全屏显示'">
+                <button class="action-btn" @click="toggleFullScreen" :title="isFullScreen ? 'Exit fullscreen' : 'Fullscreen'">
                   <span class="icon-fullscreen">{{ isFullScreen ? '↙' : '↗' }}</span>
                 </button>
             </div>
@@ -48,10 +48,10 @@
         </div>
         
         <div class="graph-container" ref="graphContainer">
-          <!-- Graph可视化（只要有数据就显示） -->
+          <!-- Graph visualisation -->
           <div v-if="graphData" class="graph-view">
             <svg ref="graphSvg" class="graph-svg"></svg>
-            <!-- 构建中提示 -->
+            <!-- Build status hint -->
             <div v-if="currentPhase === 1" class="graph-building-hint">
               <span class="building-dot"></span>
               Updating in real time…
@@ -110,7 +110,7 @@
               
               <!-- Edge Detail -->
               <div v-else class="detail-content">
-                <!-- 关系展示 -->
+                <!--  edges展示 -->
                 <div class="edge-relation">
                   <span class="edge-source">{{ selectedItem.data.source_name || selectedItem.data.source_node_name }}</span>
                   <span class="edge-arrow">→</span>
@@ -250,7 +250,7 @@
               <div class="detail-section">
                 <div class="detail-label">接口说明</div>
                 <div class="detail-content">
-                  上传文档后，LLM分析文档内容，自动生成适合舆论Simulation的本体结构（实体类型 + 关系类型）
+                  上传文档后，LLM分析文档内容，自动生成适合舆论Simulation的本体结构（实体类型 +  edges类型）
                 </div>
               </div>
               
@@ -278,7 +278,7 @@
               </div>
               
               <div class="detail-section" v-if="projectData?.ontology">
-                <div class="detail-label">生成的关系类型 ({{ projectData.ontology.relation_types?.length || 0 }})</div>
+                <div class="detail-label">生成的 edges类型 ({{ projectData.ontology.relation_types?.length || 0 }})</div>
                 <div class="relation-list">
                   <div 
                     v-for="(rel, idx) in projectData.ontology.relation_types?.slice(0, 5) || []" 
@@ -292,7 +292,7 @@
                     <span class="rel-target">{{ rel.target_type }}</span>
                   </div>
                   <div v-if="(projectData.ontology.relation_types?.length || 0) > 5" class="relation-more">
-                    +{{ projectData.ontology.relation_types.length - 5 }} 更多关系...
+                    +{{ projectData.ontology.relation_types.length - 5 }} 更多 edges...
                   </div>
                 </div>
               </div>
@@ -321,7 +321,7 @@
               <div class="detail-section">
                 <div class="detail-label">接口说明</div>
                 <div class="detail-content">
-                  基于生成的本体，将文档分块后调用 Zep API 构建知识Graph，提取实体和关系
+                  基于生成的本体，将文档分块后调用 Zep API 构建知识Graph，提取实体和 edges
                 </div>
               </div>
               
@@ -437,7 +437,7 @@ const graphData = ref(null)
 const buildProgress = ref(null)
 const ontologyProgress = ref(null) // Ontology Generation进度
 const currentPhase = ref(-1) // -1: 上传中, 0: Ontology Generation中, 1: Map Construction, 2: 完成
-const selectedItem = ref(null) // 选中的节点或边
+const selectedItem = ref(null) // 选中的 nodes或边
 const isFullScreen = ref(false)
 
 // DOM引用
@@ -519,7 +519,7 @@ const formatDate = (dateStr) => {
   }
 }
 
-// 选中节点
+// 选中 nodes
 const selectNode = (nodeData, color) => {
   selectedItem.value = {
     type: 'node',
@@ -897,7 +897,7 @@ const renderGraph = () => {
   
   svg.selectAll('*').remove()
   
-  // 处理节点数据
+  // 处理 nodes数据
   const nodesData = graphData.value.nodes || []
   const edgesData = graphData.value.edges || []
   
@@ -913,7 +913,7 @@ const renderGraph = () => {
     return
   }
   
-  // 创建节点映射用于查找名称
+  // 创建 nodes映射用于查找名称
   const nodeMap = {}
   nodesData.forEach(n => {
     nodeMap[n.uuid] = n
@@ -926,7 +926,7 @@ const renderGraph = () => {
     rawData: n // 保存原始数据
   }))
   
-  // 创建节点ID集合用于过滤有效边
+  // 创建 nodesID集合用于过滤有效边
   const nodeIds = new Set(nodes.map(n => n.id))
   
   const edges = edgesData
@@ -1005,7 +1005,7 @@ const renderGraph = () => {
     .attr('text-anchor', 'middle')
     .text(d => d.type.length > 15 ? d.type.substring(0, 12) + '...' : d.type)
   
-  // 绘制节点
+  // 绘制 nodes
   const node = g.append('g')
     .attr('class', 'nodes')
     .selectAll('g')
@@ -1220,7 +1220,7 @@ onUnmounted(() => {
   color: #999;
 }
 
-/* 主内容区 */
+/* Main content */
 .main-content {
   display: flex;
   height: calc(100vh - 56px);
@@ -1569,7 +1569,7 @@ onUnmounted(() => {
   color: #666;
 }
 
-/* Edge Detail关系展示 */
+/* Edge Detail edges展示 */
 .edge-relation {
   display: flex;
   align-items: center;
@@ -1841,7 +1841,7 @@ onUnmounted(() => {
   color: #333;
 }
 
-/* 关系列表 */
+/*  edges列表 */
 .relation-list {
   font-size: 0.8rem;
 }
