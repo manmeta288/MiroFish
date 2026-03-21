@@ -1,6 +1,8 @@
 """
 Configuration management.
-Loads from the project-root .env file, falling back to environment variables in production.
+Loads the project-root .env for local dev. On Railway/Docker, platform env vars must win:
+never use override=True, or a baked-in .env could replace NEO4J_PASSWORD / LLM keys and cause
+Neo4j `Unauthorized` even when the Railway dashboard shows the correct values.
 """
 
 import os
@@ -8,10 +10,20 @@ from dotenv import load_dotenv
 
 project_root_env = os.path.join(os.path.dirname(__file__), '../../.env')
 
+# override=False: process env (Railway, docker -e, shell) always takes precedence over .env
 if os.path.exists(project_root_env):
-    load_dotenv(project_root_env, override=True)
+    load_dotenv(project_root_env, override=False)
 else:
-    load_dotenv(override=True)
+    load_dotenv(override=False)
+
+
+def _strip_env(key: str, default=None):
+    v = os.environ.get(key, default)
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+    return v or None
 
 
 class Config:
@@ -27,10 +39,10 @@ class Config:
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')
 
-    # Neo4j
-    NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
-    NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
-    NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD')
+    # Neo4j (strip avoids copy/paste newlines/spaces that match in the UI but fail auth)
+    NEO4J_URI = _strip_env('NEO4J_URI') or 'bolt://localhost:7687'
+    NEO4J_USER = _strip_env('NEO4J_USER') or 'neo4j'
+    NEO4J_PASSWORD = _strip_env('NEO4J_PASSWORD')
 
     # File uploads
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB

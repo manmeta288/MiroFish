@@ -52,6 +52,22 @@ NEO4J_PLUGINS=["apoc", "gds"]  # APOC for utilities, GDS for graph data science
    - Username: `neo4j`
    - Password: (from NEO4J_AUTH)
 
+### Neo4j `Neo.ClientError.Security.Unauthorized` (auth works in the dashboard)
+
+If MiroFish shows **Unauthorized** but you believe the password is correct:
+
+1. **Neo4j service must use `NEO4J_AUTH`**, not separate `NEO4J_USER` / `NEO4J_PASSWORD`. The official image only applies credentials from  
+   `NEO4J_AUTH=neo4j/<password>` (everything after `/` is the password).
+
+2. **Keep MiroFish in sync with one Railway reference variable**  
+   In MiroFish → Variables → *New Variable* → *Reference* → pick the Neo4j service → use the same password Railway injects for Neo4j (or parse from `NEO4J_AUTH` if you expose a derived var). That avoids drift between two manually typed secrets.
+
+3. **Hidden whitespace**  
+   Re-paste the password in both services, or temporarily set a simple alphanumeric password to rule out invisible characters.
+
+4. **App config precedence**  
+   The backend loads `.env` with **`override=False`** so **Railway’s environment variables always win** over any file in the image. If you still see Unauthorized after a deploy, trigger a **clean redeploy** of MiroFish so the new image is running.
+
 ---
 
 ## Step 2: Backend Code Modifications
