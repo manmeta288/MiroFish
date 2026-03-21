@@ -116,9 +116,15 @@
         <span class="loading-label">Fetching live network intelligence…</span>
       </div>
 
+      <!-- API error notice -->
+      <div v-if="dataError" class="error-notice">
+        <span class="error-icon">⚠</span>
+        {{ dataError }}
+      </div>
+
       <!-- Step 2: Scenario cards -->
       <transition name="fade-slide">
-        <div v-if="networkData && !loadingData" class="step-block cards-block">
+        <div v-if="networkData && !loadingData && !dataError" class="step-block cards-block">
           <div class="step-label">
             <span class="step-number">02</span>
             <span class="step-title-text">Choose a Scenario</span>
@@ -225,7 +231,7 @@ const FALLBACK_NETWORKS = [
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
-    const res = await service.get('/api/network/list')
+    const res = await service.get('/network/list')
     if (res.success && res.data && res.data.length > 0) {
       networkList.value = res.data
     } else {
@@ -317,50 +323,18 @@ const onNetworkChange = async () => {
   dataError.value = ''
   loadingData.value = true
 
-  // Get selected network display info for fallback
-  const selectedNet = networkList.value.find(n => n.slug === selectedNetwork.value)
-  const displayName = selectedNet?.display_name || selectedNetwork.value
-  const token = selectedNet?.token || 'TOKEN'
-
   try {
-    const res = await service.get('/api/network/fetch', { params: { network: selectedNetwork.value } })
+    const res = await service.get('/network/fetch', { params: { network: selectedNetwork.value } })
     if (res.success) {
       networkData.value = res.data
     } else {
-      // Silent fail - use fallback data
-      networkData.value = createFallbackNetworkData(displayName, token)
+      dataError.value = res.error || 'Failed to fetch network data. Please try again.'
     }
   } catch (e) {
-    // Silent fail - use fallback data so user can still proceed
-    console.warn('Network API failed, using fallback:', e)
-    networkData.value = createFallbackNetworkData(displayName, token)
+    dataError.value = 'Network API unavailable. Please check your connection or try again later.'
+    console.error('Network fetch error:', e)
   } finally {
     loadingData.value = false
-  }
-}
-
-const createFallbackNetworkData = (displayName, token) => {
-  return {
-    network: selectedNetwork.value,
-    display_name: displayName,
-    token: token,
-    price_usd: 0,
-    price_change_24h: 0,
-    market_cap_usd: 0,
-    validator_count: 100,
-    top_validators: [
-      { name: 'Validator 1', voting_power_pct: 15.5, commission: '5%' },
-      { name: 'Validator 2', voting_power_pct: 12.3, commission: '4%' },
-      { name: 'Validator 3', voting_power_pct: 10.1, commission: '6%' },
-    ],
-    nakamoto_coefficient: 3,
-    staking_ratio: 0.65,
-    staking_apy: 0.15,
-    total_staked_usd: 0,
-    governance_proposals: [],
-    data_sources_used: ['fallback'],
-    fetched_at: new Date().toISOString(),
-    synthetic_report: `# ${displayName} (${token}) — Network Intelligence Report\n\nLive data temporarily unavailable. Using fallback parameters for simulation.`,
   }
 }
 
@@ -467,11 +441,16 @@ const formatPrice = (p) => {
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   border-bottom: 3px solid #000;
   background: #fff;
+}
+.simulate-root {
+  padding-top: 70px; /* Account for fixed header height */
 }
 .header-inner {
   max-width: 1100px;

@@ -1,8 +1,27 @@
 import axios from 'axios'
 
+// Determine the correct API base URL
+const getApiBaseUrl = () => {
+  // If explicitly set via env var, use that
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  
+  // In production (Railway), use relative /api path
+  // The frontend should be configured to proxy or the backend should be at same origin
+  if (import.meta.env.PROD) {
+    // Use the current origin for API calls (assumes backend is at /api on same domain)
+    // Or if backend is separate, set VITE_API_BASE_URL env var in Railway
+    return '/api'
+  }
+  
+  // Development: direct to localhost backend
+  return 'http://localhost:5001'
+}
+
 // 创建axios实例
 const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001',
+  baseURL: getApiBaseUrl(),
   timeout: 300000, // 5分钟超时（本体生成可能需要较长时间）
   headers: {
     'Content-Type': 'application/json'
