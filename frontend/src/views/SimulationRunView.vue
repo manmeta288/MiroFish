@@ -56,9 +56,42 @@
         />
       </div>
 
-      <!-- Right Panel: Step3 Run Simulation -->
+      <!-- Right Panel: Step3 Run Simulation (mount only after simulation exists on server) -->
       <div class="panel-wrapper right" :style="rightPanelStyle">
+        <div v-if="loadingSimulation" class="step-bootstrap">
+          <div class="bootstrap-spinner"></div>
+          <p>Loading simulation…</p>
+        </div>
+        <div v-else-if="simulationNotFound" class="step-blocked-panel">
+          <div class="blocked-card">
+            <h2 class="blocked-title">Simulation not found</h2>
+            <p class="blocked-lead">
+              <code class="blocked-id">{{ currentSimulationId }}</code> is not on this server anymore.
+            </p>
+            <p class="blocked-copy">
+              That usually means the app was redeployed, storage was reset, or you’re using an old bookmark.
+              Step 3 cannot run without that server-side simulation.
+            </p>
+            <div class="blocked-actions">
+              <button type="button" class="blocked-btn primary" @click="goHome">Start from home</button>
+            </div>
+            <p class="blocked-hint">
+              You’ll need to run the flow again: choose a network → build the knowledge graph → environment setup → run simulation.
+            </p>
+          </div>
+        </div>
+        <div v-else-if="loadErrorMessage" class="step-blocked-panel">
+          <div class="blocked-card">
+            <h2 class="blocked-title">Could not load simulation</h2>
+            <p class="blocked-copy">{{ loadErrorMessage }}</p>
+            <div class="blocked-actions">
+              <button type="button" class="blocked-btn primary" @click="retryLoad">Retry</button>
+              <button type="button" class="blocked-btn ghost" @click="goHome">Home</button>
+            </div>
+          </div>
+        </div>
         <Step3Simulation
+          v-else-if="simulationReady"
           :key="step3Key"
           :simulationId="currentSimulationId"
           :maxRounds="maxRounds"
@@ -104,9 +137,13 @@ const projectData = ref(null)
 const graphData = ref(null)
 const graphLoading = ref(false)
 const systemLogs = ref([])
-const currentStatus = ref('processing') // processing | completed | error
+const currentStatus = ref('idle') // idle | processing | completed | error (Step 3 updates this)
 const step3Key = ref(0)
 const restartBusy = ref(false)
+const loadingSimulation = ref(true)
+const simulationReady = ref(false)
+const simulationNotFound = ref(false)
+const loadErrorMessage = ref('')
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -123,16 +160,22 @@ const rightPanelStyle = computed(() => {
 
 // --- Status Computed ---
 const statusClass = computed(() => {
+  if (loadingSimulation.value) return 'loading'
+  if (simulationNotFound.value || loadErrorMessage.value) return 'error'
   return currentStatus.value
 })
 
 const statusText = computed(() => {
+  if (loadingSimulation.value) return 'Loading'
+  if (simulationNotFound.value) return 'Unavailable'
+  if (loadErrorMessage.value) return 'Error'
   if (currentStatus.value === 'error') return 'Error'
   if (currentStatus.value === 'completed') return 'Completed'
-  return 'Running'
+  if (currentStatus.value === 'processing') return 'Running'
+  return 'Ready'
 })
 
-const isSimulating = computed(() => currentStatus.value === 'processing')
+const isSimulating = computed(() => simulationReady.value && currentStatus.value === 'processing')
 
 // --- Helpers ---
 const addLog = (msg) => {
@@ -145,6 +188,29 @@ const addLog = (msg) => {
 
 const updateStatus = (status) => {
   currentStatus.value = status
+}
+
+const goHome = () => {
+  router.push('/')
+}
+
+const retryLoad = async () => {
+  if (restartBusy.value) return
+  restartBusy.value = true
+  loadErrorMessage.value = ''
+  simulationNotFound.value = false
+  loadingSimulation.value = true
+  try {
+    const ok = await loadSimulationData()
+    if (ok) {
+      step3Key.value += 1
+      simulationReady.value = true
+      currentStatus.value = 'idle'
+    }
+  } finally {
+    loadingSimulation.value = false
+    restartBusy.value = false
+  }
 }
 
 // --- Layout Methods ---
@@ -161,22 +227,36 @@ const handleRestartStep = async () => {
   restartBusy.value = true
   addLog('↺ Restarting simulation run on this page…')
   stopGraphRefresh()
+  simulationReady.value = false
+  simulationNotFound.value = false
+  loadErrorMessage.value = ''
   try {
     try {
       await stopSimulation({ simulation_id: currentSimulationId.value })
     } catch {
       /* best-effort stop before remount */
     }
-    currentStatus.value = 'processing'
+    currentStatus.value = 'idle'
     await nextTick()
-    step3Key.value += 1
-    await loadSimulationData()
+    loadingSimulation.value = true
+    const ok = await loadSimulationData()
+    loadingSimulation.value = false
+    if (ok) {
+      step3Key.value += 1
+      simulationReady.value = true
+    } else {
+      currentStatus.value = 'error'
+    }
   } finally {
     restartBusy.value = false
   }
 }
 
 const handleGoBack = async () => {
+  if (simulationNotFound.value) {
+    goHome()
+    return
+  }
   // Close any running simulation before returning to Step 2
   addLog('Preparing to return to Step 2, closing simulation…')
   
@@ -232,43 +312,60 @@ const handleNextStep = () => {
 
 // --- Data Logic ---
 const loadSimulationData = async () => {
+  simulationNotFound.value = false
+  loadErrorMessage.value = ''
   try {
     addLog(`Loading simulation data: ${currentSimulationId.value}`)
-    
-    // Fetch simulation info
+
     const simRes = await getSimulation(currentSimulationId.value)
     if (simRes.success && simRes.data) {
       const simData = simRes.data
-      
-      // Fetch simulation config to get minutes_per_round
+
       try {
         const configRes = await getSimulationConfig(currentSimulationId.value)
         if (configRes.success && configRes.data?.time_config?.minutes_per_round) {
           minutesPerRound.value = configRes.data.time_config.minutes_per_round
           addLog(`Time config: each round ${minutesPerRound.value} mins`)
         }
-      } catch (configErr) {
+      } catch {
         addLog(`Failed to get time config, using default: ${minutesPerRound.value} min/round`)
       }
-      
-      // Fetch project info
+
       if (simData.project_id) {
         const projRes = await getProject(simData.project_id)
         if (projRes.success && projRes.data) {
           projectData.value = projRes.data
           addLog(`Project loaded: ${projRes.data.project_id}`)
-          
-          // Fetch graph data
+
           if (projRes.data.graph_id) {
             await loadGraph(projRes.data.graph_id)
           }
         }
       }
-    } else {
-      addLog(`Failed to load simulation data: ${simRes.error || 'Unknown error'}`)
+      return true
     }
+
+    const msg = simRes.error || 'Unknown error'
+    loadErrorMessage.value = msg
+    addLog(`Failed to load simulation data: ${msg}`)
+    updateStatus('error')
+    return false
   } catch (err) {
-    addLog(`Load error: ${err.message}`)
+    const status = err?.response?.status
+    const is404 = status === 404 || /404/.test(String(err.message || ''))
+    if (is404) {
+      simulationNotFound.value = true
+      addLog(
+        'Simulation not found on the server (redeploy, storage reset, or stale URL). Start a new workflow from the home page.'
+      )
+      updateStatus('error')
+      return false
+    }
+    const msg = err.message || 'Unknown error'
+    loadErrorMessage.value = msg
+    addLog(`Load error: ${msg}`)
+    updateStatus('error')
+    return false
   }
 }
 
@@ -319,6 +416,10 @@ const stopGraphRefresh = () => {
 }
 
 watch(isSimulating, (newValue) => {
+  if (!simulationReady.value) {
+    stopGraphRefresh()
+    return
+  }
   if (newValue) {
     startGraphRefresh()
   } else {
@@ -326,15 +427,39 @@ watch(isSimulating, (newValue) => {
   }
 }, { immediate: true })
 
-onMounted(() => {
+watch(
+  () => route.params.simulationId,
+  async (id) => {
+    if (!id || id === currentSimulationId.value) return
+    currentSimulationId.value = id
+    simulationReady.value = false
+    simulationNotFound.value = false
+    loadErrorMessage.value = ''
+    stopGraphRefresh()
+    loadingSimulation.value = true
+    currentStatus.value = 'idle'
+    const ok = await loadSimulationData()
+    loadingSimulation.value = false
+    if (ok) {
+      step3Key.value += 1
+      simulationReady.value = true
+    }
+  }
+)
+
+onMounted(async () => {
   addLog('SimulationRunView Initializing')
-  
-  // Log maxRounds config (value already read from query at init)
+
   if (maxRounds.value) {
     addLog(`Custom simulation rounds: ${maxRounds.value}`)
   }
-  
-  loadSimulationData()
+
+  loadingSimulation.value = true
+  const ok = await loadSimulationData()
+  loadingSimulation.value = false
+  if (ok) {
+    simulationReady.value = true
+  }
 })
 
 onUnmounted(() => {
@@ -474,11 +599,113 @@ onUnmounted(() => {
   background: #CCC;
 }
 
+.status-indicator.loading .dot { background: #607D8B; animation: pulse 1s infinite; }
 .status-indicator.processing .dot { background: #FF5722; animation: pulse 1s infinite; }
 .status-indicator.completed .dot { background: #4CAF50; }
 .status-indicator.error .dot { background: #F44336; }
 
 @keyframes pulse { 50% { opacity: 0.5; } }
+
+.step-bootstrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: #666;
+  font-size: 14px;
+}
+.bootstrap-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #EAEAEA;
+  border-top-color: #ff3b30;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.step-blocked-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  background: #fafafa;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.blocked-card {
+  max-width: 420px;
+  background: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 28px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+.blocked-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #111;
+}
+.blocked-lead {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.5;
+}
+.blocked-id {
+  font-size: 12px;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+.blocked-copy {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.55;
+}
+.blocked-hint {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.5;
+}
+.blocked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.blocked-btn {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+}
+.blocked-btn.primary {
+  background: #000;
+  color: #fff;
+}
+.blocked-btn.primary:hover {
+  background: #333;
+}
+.blocked-btn.ghost {
+  background: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+}
+.blocked-btn.ghost:hover {
+  background: #f5f5f5;
+}
 
 /* Content */
 .content-area {
