@@ -2,6 +2,22 @@
 OASIS 双平台并行模拟预设脚本
 同时运行Twitter和Reddit模拟，读取相同的配置文件
 
+日志位置（排查 graph / 模拟失败时从这里找）:
+- 主机 / Railway: 运行后端的进程标准输出（Flask + 子进程）
+- 每个模拟目录 uploads/simulations/<simulation_id>/:
+    simulation.log          — 子进程主日志
+    twitter/actions.jsonl   — Twitter 动作流
+    reddit/actions.jsonl    — Reddit 动作流
+    run_state.json          — 轮询用的运行状态快照
+- 浏览器: Step 3 Simulation Monitor（本页日志）+ DevTools → Network（API 错误正文）
+
+吞吐模式（约万级动作 / 数分钟，主循环无 LLM）:
+- 环境变量 OASIS_SIMULATION_MODE=fast （或 throughput / synthetic）
+  或 OASIS_FAST_SIMULATION=1
+  或 simulation_config.json → time_config.fast_simulation: true
+- 可选 time_config.fast_actions_per_round 或 OASIS_FAST_ACTIONS_PER_ROUND（默认 125）
+- 全量 LLM 模式受限于 API 延迟；提高并发: OASIS_LLM_SEMAPHORE（默认 48）
+
 功能特性:
 - 双平台（Twitter + Reddit）并行模拟
 - 完成模拟后不立即关闭环境，进入等待命令模式
@@ -209,8 +225,19 @@ def _truthy_env(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
 
 
+def _llm_semaphore_limit() -> int:
+    """OASIS 内并发 LLM 调用上限；提高可缩短 wall-clock（注意供应商限流）。"""
+    try:
+        return max(8, int(os.environ.get("OASIS_LLM_SEMAPHORE", "48")))
+    except ValueError:
+        return 48
+
+
 def is_fast_simulation_config(config: Dict[str, Any]) -> bool:
     """快速模式：不写 LLM 主循环，仅向 jsonl 写入合成动作（适合万级动作、数分钟内跑完）。"""
+    mode = os.environ.get("OASIS_SIMULATION_MODE", "").strip().lower()
+    if mode in ("fast", "throughput", "synthetic"):
+        return True
     tc = config.get("time_config") or {}
     fs = tc.get("fast_simulation")
     if fs is True:
@@ -1244,7 +1271,7 @@ async def run_twitter_simulation(
         agent_graph=result.agent_graph,
         platform=oasis.DefaultPlatformType.TWITTER,
         database_path=db_path,
-        semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
+        semaphore=_llm_semaphore_limit(),
     )
     
     await result.env.reset()
@@ -1463,7 +1490,7 @@ async def run_reddit_simulation(
         agent_graph=result.agent_graph,
         platform=oasis.DefaultPlatformType.REDDIT,
         database_path=db_path,
-        semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
+        semaphore=_llm_semaphore_limit(),
     )
     
     await result.env.reset()

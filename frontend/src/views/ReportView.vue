@@ -4,6 +4,11 @@
     <header class="app-header">
       <div class="header-left">
         <div class="brand" @click="router.push('/')"><span class="brand-dot"></span><span class="brand-name">NODERA</span><span class="brand-tag">SIMULATE</span></div>
+        <WorkflowStepNav
+          :project-id="projectData?.project_id || ''"
+          :simulation-id="simulationId || ''"
+          :report-id="currentReportId || ''"
+        />
       </div>
       
       <div class="header-center">
@@ -76,6 +81,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step4Report from '../components/Step4Report.vue'
+import WorkflowStepNav from '../components/WorkflowStepNav.vue'
 import { getProject, getGraphData } from '../api/graph'
 import { getSimulation } from '../api/simulation'
 import { getReport } from '../api/report'
@@ -94,7 +100,7 @@ const viewMode = ref('workbench')
 // Data State
 const currentReportId = ref(route.params.reportId)
 const simulationId = ref(null)
-const projectData = ref(null)
+const projectData = ref(null) // used for workflow nav + graph
 const graphData = ref(null)
 const graphLoading = ref(false)
 const systemLogs = ref([])
@@ -265,6 +271,14 @@ onMounted(() => {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  z-index: 2;
 }
 
 .brand {

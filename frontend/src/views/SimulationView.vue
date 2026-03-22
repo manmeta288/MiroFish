@@ -4,6 +4,11 @@
     <header class="app-header">
       <div class="header-left">
         <div class="brand" @click="router.push('/')"><span class="brand-dot"></span><span class="brand-name">NODERA</span><span class="brand-tag">SIMULATE</span></div>
+        <WorkflowStepNav
+          :project-id="projectData?.project_id || ''"
+          :simulation-id="currentSimulationId || ''"
+          report-id=""
+        />
       </div>
       
       <div class="header-center">
@@ -79,6 +84,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step2EnvSetup from '../components/Step2EnvSetup.vue'
+import WorkflowStepNav from '../components/WorkflowStepNav.vue'
 import { getProject, getGraphData } from '../api/graph'
 import { getSimulation, stopSimulation, getEnvStatus, closeSimulationEnv } from '../api/simulation'
 
@@ -349,6 +355,14 @@ onMounted(async () => {
   background: #FFF;
   z-index: 100;
   position: relative;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  z-index: 2;
 }
 
 .brand {

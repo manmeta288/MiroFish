@@ -43,6 +43,25 @@ export const getReport = (reportId) => {
 }
 
 /**
+ * Download report as Markdown (uses axios blob so same-origin cookies apply)
+ * @param {string} reportId
+ */
+export const downloadReportMarkdown = async (reportId) => {
+  const blob = await service.get(`/api/report/${reportId}/download`, { responseType: 'blob' })
+  const url = URL.createObjectURL(blob)
+  try {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${reportId}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+/**
  * Chat with Report Agent
  * @param {Object} data - { simulation_id, message, chat_history? }
  */

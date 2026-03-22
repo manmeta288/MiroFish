@@ -4,6 +4,11 @@
     <header class="app-header">
       <div class="header-left">
         <div class="brand" @click="router.push('/')"><span class="brand-dot"></span><span class="brand-name">NODERA</span><span class="brand-tag">SIMULATE</span></div>
+        <WorkflowStepNav
+          :project-id="projectData?.project_id || ''"
+          :simulation-id="currentSimulationId || ''"
+          report-id=""
+        />
       </div>
       
       <div class="header-center">
@@ -113,6 +118,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
+import WorkflowStepNav from '../components/WorkflowStepNav.vue'
 import Step3Simulation from '../components/Step3Simulation.vue'
 import { getProject, getGraphData } from '../api/graph'
 import { getSimulation, getSimulationConfig, stopSimulation, closeSimulationEnv, getEnvStatus } from '../api/simulation'
@@ -370,22 +376,16 @@ const loadSimulationData = async () => {
 }
 
 const loadGraph = async (graphId) => {
-  // Suppress full-screen loading during auto-refresh to prevent flicker
-  // Show loading on manual refresh or initial load
-  if (!isSimulating.value) {
-    graphLoading.value = true
-  }
-  
+  graphLoading.value = true
   try {
     const res = await getGraphData(graphId)
     if (res.success) {
       graphData.value = res.data
-      if (!isSimulating.value) {
-        addLog('Graph data loaded')
-      }
+      addLog('Graph data loaded')
     }
   } catch (err) {
-    addLog(`Graph load failed: ${err.message}`)
+    const detail = err?.response?.data?.error || err?.response?.status || err.message
+    addLog(`Graph load failed: ${detail}`)
   } finally {
     graphLoading.value = false
   }
@@ -397,21 +397,13 @@ const refreshGraph = () => {
   }
 }
 
-// --- Auto Refresh Logic ---
+// Graph: manual refresh only (↻ on graph panel). Auto-refresh hid failures and obscured causes.
 let graphRefreshTimer = null
-
-const startGraphRefresh = () => {
-  if (graphRefreshTimer) return
-  addLog('Graph auto-refresh enabled (30s)')
-  // Refresh immediately, then every 30 s
-  graphRefreshTimer = setInterval(refreshGraph, 30000)
-}
 
 const stopGraphRefresh = () => {
   if (graphRefreshTimer) {
     clearInterval(graphRefreshTimer)
     graphRefreshTimer = null
-    addLog('Graph auto-refresh stopped')
   }
 }
 
@@ -421,9 +413,10 @@ watch(isSimulating, (newValue) => {
     return
   }
   if (newValue) {
-    startGraphRefresh()
-  } else {
-    stopGraphRefresh()
+    addLog(
+      'Graph auto-refresh is off. Click the graph ↻ button to reload; load errors are logged here. ' +
+        'Backend: Railway/host logs + uploads/simulations/<id>/simulation.log; per-sim actions: twitter|reddit/actions.jsonl.'
+    )
   }
 }, { immediate: true })
 
@@ -488,6 +481,14 @@ onUnmounted(() => {
   background: #FFF;
   z-index: 100;
   position: relative;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  z-index: 2;
 }
 
 .header-center {

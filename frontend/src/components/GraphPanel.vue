@@ -27,7 +27,7 @@
               <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-4.04z" />
             </svg>
           </div>
-          {{ isSimulating ? 'GraphRAG memory updating in real time' : 'Updating in real time…' }}
+          {{ isSimulating ? 'Simulation running — click Refresh (↻) to reload graph data' : 'Updating in real time…' }}
         </div>
         
         <!-- Simulation-end hint -->

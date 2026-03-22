@@ -8,6 +8,11 @@
           <span class="brand-name">NODERA</span>
           <span class="brand-tag">SIMULATE</span>
         </div>
+        <WorkflowStepNav
+          :project-id="navProjectId"
+          simulation-id=""
+          report-id=""
+        />
       </div>
       
       <div class="header-center">
@@ -93,6 +98,7 @@ import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step1GraphBuild from '../components/Step1GraphBuild.vue'
 import Step2EnvSetup from '../components/Step2EnvSetup.vue'
+import WorkflowStepNav from '../components/WorkflowStepNav.vue'
 import { generateOntology, getProject, buildGraph, getTaskStatus, getGraphData } from '../api/graph'
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 
@@ -108,6 +114,9 @@ const stepNames = ['Map Construction', 'Environment Setup', 'Run Simulation', 'G
 
 // Data State
 const currentProjectId = ref(route.params.projectId)
+const navProjectId = computed(() =>
+  currentProjectId.value && currentProjectId.value !== 'new' ? String(currentProjectId.value) : ''
+)
 const loading = ref(false)
 const graphLoading = ref(false)
 const error = ref('')
@@ -468,6 +477,14 @@ onUnmounted(() => {
   background: #FFF;
   z-index: 100;
   position: relative;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  z-index: 2;
 }
 
 .header-center {

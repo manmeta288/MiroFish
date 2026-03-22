@@ -4,6 +4,11 @@
     <header class="app-header">
       <div class="header-left">
         <div class="brand" @click="router.push('/')"><span class="brand-dot"></span><span class="brand-name">NODERA</span><span class="brand-tag">SIMULATE</span></div>
+        <WorkflowStepNav
+          :project-id="projectData?.project_id || ''"
+          :simulation-id="simulationId || ''"
+          :report-id="currentReportId || ''"
+        />
       </div>
       
       <div class="header-center">
@@ -30,6 +35,15 @@
           <span class="dot"></span>
           {{ statusText }}
         </span>
+        <button
+          class="download-btn"
+          type="button"
+          :disabled="downloadBusy || !currentReportId"
+          @click="handleDownloadReport"
+          title="Download full report as Markdown"
+        >
+          ⬇ Download report
+        </button>
         <button
           class="restart-btn"
           type="button"
@@ -76,9 +90,10 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step5Interaction from '../components/Step5Interaction.vue'
+import WorkflowStepNav from '../components/WorkflowStepNav.vue'
 import { getProject, getGraphData } from '../api/graph'
 import { getSimulation } from '../api/simulation'
-import { getReport } from '../api/report'
+import { getReport, downloadReportMarkdown } from '../api/report'
 
 const route = useRoute()
 const router = useRouter()
@@ -101,6 +116,7 @@ const systemLogs = ref([])
 const currentStatus = ref('ready') // ready | processing | completed | error
 const interactionPanelKey = ref(0)
 const restartBusy = ref(false)
+const downloadBusy = ref(false)
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -211,6 +227,19 @@ const refreshGraph = () => {
   }
 }
 
+const handleDownloadReport = async () => {
+  if (!currentReportId.value || downloadBusy.value) return
+  downloadBusy.value = true
+  try {
+    await downloadReportMarkdown(currentReportId.value)
+    addLog('Report downloaded (Markdown).')
+  } catch (err) {
+    addLog(`Download failed: ${err.message || err}`)
+  } finally {
+    downloadBusy.value = false
+  }
+}
+
 const handleRestartStep = async () => {
   if (restartBusy.value) return
   restartBusy.value = true
@@ -260,6 +289,39 @@ onMounted(() => {
   background: #FFF;
   z-index: 100;
   position: relative;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  z-index: 2;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #111;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.download-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+.download-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .header-center {
@@ -328,7 +390,9 @@ onMounted(() => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .workflow-step {

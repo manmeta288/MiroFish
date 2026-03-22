@@ -1613,6 +1613,10 @@ def start_simulation():
             fast_sim = os.environ.get("OASIS_FAST_SIMULATION", "").strip().lower() in (
                 "1", "true", "yes", "on",
             )
+        if not fast_sim:
+            fast_sim = os.environ.get("OASIS_SIMULATION_MODE", "").strip().lower() in (
+                "fast", "throughput", "synthetic",
+            )
         if fast_sim and enable_graph_memory_update:
             logger.info(
                 "fast_simulation: disabling graph memory updates for throughput "

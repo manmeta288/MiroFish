@@ -47,6 +47,9 @@ service.interceptors.request.use(
 // response interceptor (retry)
 service.interceptors.response.use(
   response => {
+    if (response.config.responseType === 'blob') {
+      return response.data
+    }
     const res = response.data
     
     // reject if not success

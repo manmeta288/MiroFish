@@ -407,7 +407,8 @@ const doStartSimulation = async () => {
       simulation_id: props.simulationId,
       platform: 'parallel',
       force: true,  // force restart
-      enable_graph_memory_update: true  // enable dynamic graph update
+      // Off by default: Zep writes per action are slow and can fail opaquely; turn on when you need live graph sync.
+      enable_graph_memory_update: import.meta.env.VITE_ENABLE_GRAPH_MEMORY_UPDATE === 'true'
     }
     
     if (props.maxRounds) {
@@ -415,7 +416,11 @@ const doStartSimulation = async () => {
       addLog(`Max simulation rounds set: ${props.maxRounds}`)
     }
     
-    addLog('Dynamic graph update mode enabled')
+    if (params.enable_graph_memory_update) {
+      addLog('Dynamic graph update mode enabled (Zep)')
+    } else {
+      addLog('Dynamic graph update off (faster; set VITE_ENABLE_GRAPH_MEMORY_UPDATE=true to enable Zep sync)')
+    }
     
     const res = await startSimulation(params)
     
