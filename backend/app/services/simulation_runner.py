@@ -653,18 +653,18 @@ class SimulationRunner:
                                     round_num = action_data.get("round", 0)
                                     simulated_hours = action_data.get("simulated_hours", 0)
                                     
-                                    # 更新各平台独立的轮次和时间
+                                    # 更新各平台独立的轮次和时间（用 >= 以便 round 0 也能落盘）
                                     if platform == "twitter":
-                                        if round_num > state.twitter_current_round:
+                                        if round_num >= state.twitter_current_round:
                                             state.twitter_current_round = round_num
                                         state.twitter_simulated_hours = simulated_hours
                                     elif platform == "reddit":
-                                        if round_num > state.reddit_current_round:
+                                        if round_num >= state.reddit_current_round:
                                             state.reddit_current_round = round_num
                                         state.reddit_simulated_hours = simulated_hours
                                     
                                     # 总体轮次取两个平台的最大值
-                                    if round_num > state.current_round:
+                                    if round_num >= state.current_round:
                                         state.current_round = round_num
                                     # 总体时间取两个平台的最大值
                                     state.simulated_hours = max(state.twitter_simulated_hours, state.reddit_simulated_hours)
@@ -684,9 +684,14 @@ class SimulationRunner:
                             )
                             state.add_action(action)
                             
-                            # 更新轮次
-                            if action.round_num and action.round_num > state.current_round:
-                                state.current_round = action.round_num
+                            # 更新轮次（与 UI 一致：普通动作行也推进各平台轮次，避免仅依赖 round_end）
+                            if action.round_num:
+                                if action.round_num > state.current_round:
+                                    state.current_round = action.round_num
+                                if platform == "twitter" and action.round_num > state.twitter_current_round:
+                                    state.twitter_current_round = action.round_num
+                                elif platform == "reddit" and action.round_num > state.reddit_current_round:
+                                    state.reddit_current_round = action.round_num
                             
                             # 如果启用了图谱记忆更新，将活动发送到Zep
                             if graph_updater:

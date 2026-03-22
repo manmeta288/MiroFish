@@ -19,11 +19,11 @@
           <div class="platform-stats">
             <span class="stat">
               <span class="stat-label">ROUND</span>
-              <span class="stat-value mono">{{ runStatus.twitter_current_round || 0 }}<span class="stat-total">/{{ runStatus.total_rounds || maxRounds || '-' }}</span></span>
+              <span class="stat-value mono">{{ twitterRoundDisplay }}<span class="stat-total">/{{ runStatus.total_rounds || maxRounds || '-' }}</span></span>
             </span>
             <span class="stat">
               <span class="stat-label">Elapsed Time</span>
-              <span class="stat-value mono">{{ twitterElapsedTime }}</span>
+              <span class="stat-value mono">{{ twitterElapsedDisplay }}</span>
             </span>
             <span class="stat">
               <span class="stat-label">ACTS</span>
@@ -60,11 +60,11 @@
           <div class="platform-stats">
             <span class="stat">
               <span class="stat-label">ROUND</span>
-              <span class="stat-value mono">{{ runStatus.reddit_current_round || 0 }}<span class="stat-total">/{{ runStatus.total_rounds || maxRounds || '-' }}</span></span>
+              <span class="stat-value mono">{{ redditRoundDisplay }}<span class="stat-total">/{{ runStatus.total_rounds || maxRounds || '-' }}</span></span>
             </span>
             <span class="stat">
               <span class="stat-label">Elapsed Time</span>
-              <span class="stat-value mono">{{ redditElapsedTime }}</span>
+              <span class="stat-value mono">{{ redditElapsedDisplay }}</span>
             </span>
             <span class="stat">
               <span class="stat-label">ACTS</span>
@@ -347,15 +347,26 @@ const formatElapsedTime = (currentRound) => {
   return `${hours}h ${minutes}m`
 }
 
-// Twitter platform elapsed time
-const twitterElapsedTime = computed(() => {
-  return formatElapsedTime(runStatus.value.twitter_current_round || 0)
-})
+const maxActionRoundForPlatform = (platform) => {
+  let m = 0
+  for (const a of allActions.value) {
+    if (a.platform !== platform) continue
+    const r = Number(a.round_num ?? a.round ?? 0)
+    if (!Number.isNaN(r) && r > m) m = r
+  }
+  return m
+}
 
-// Reddit platform elapsed time
-const redditElapsedTime = computed(() => {
-  return formatElapsedTime(runStatus.value.reddit_current_round || 0)
-})
+// Align header with feed: max(API platform round, max round seen in loaded actions)
+const twitterRoundDisplay = computed(() =>
+  Math.max(runStatus.value.twitter_current_round || 0, maxActionRoundForPlatform('twitter'))
+)
+const redditRoundDisplay = computed(() =>
+  Math.max(runStatus.value.reddit_current_round || 0, maxActionRoundForPlatform('reddit'))
+)
+
+const twitterElapsedDisplay = computed(() => formatElapsedTime(twitterRoundDisplay.value))
+const redditElapsedDisplay = computed(() => formatElapsedTime(redditRoundDisplay.value))
 
 // Methods
 const addLog = (msg) => {

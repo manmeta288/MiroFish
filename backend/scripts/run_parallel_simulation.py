@@ -201,6 +201,94 @@ REDDIT_ACTIONS = [
     ActionType.MUTE,
 ]
 
+TWITTER_ACTION_TYPE_NAMES = [a.name for a in TWITTER_ACTIONS]
+REDDIT_ACTION_TYPE_NAMES = [a.name for a in REDDIT_ACTIONS]
+
+
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def is_fast_simulation_config(config: Dict[str, Any]) -> bool:
+    """快速模式：不写 LLM 主循环，仅向 jsonl 写入合成动作（适合万级动作、数分钟内跑完）。"""
+    tc = config.get("time_config") or {}
+    fs = tc.get("fast_simulation")
+    if fs is True:
+        return True
+    if str(fs).strip().lower() in ("1", "true", "yes"):
+        return True
+    return _truthy_env("OASIS_FAST_SIMULATION")
+
+
+def fast_actions_per_round(config: Dict[str, Any]) -> int:
+    tc = config.get("time_config") or {}
+    v = tc.get("fast_actions_per_round")
+    if v is not None:
+        try:
+            return max(1, int(v))
+        except (TypeError, ValueError):
+            pass
+    ev = os.environ.get("OASIS_FAST_ACTIONS_PER_ROUND")
+    if ev:
+        try:
+            return max(1, int(ev.strip()))
+        except ValueError:
+            pass
+    return 125
+
+
+def _synthetic_action_args(action_type: str, rng: random.Random) -> Dict[str, Any]:
+    if action_type in ("CREATE_POST", "QUOTE_POST"):
+        return {"content": f"[fast-sim] post #{rng.randint(1, 10_000_000)}"}
+    if action_type == "CREATE_COMMENT":
+        return {
+            "content": f"[fast-sim] comment #{rng.randint(1, 10_000_000)}",
+            "post_id": str(rng.randint(1, 9999)),
+        }
+    if action_type in ("REPOST", "LIKE_POST"):
+        return {"post_id": str(rng.randint(1, 9999))}
+    if action_type == "SEARCH_POSTS":
+        return {"query": f"q{rng.randint(1, 999)}"}
+    return {}
+
+
+def emit_fast_synthetic_actions(
+    action_logger: Optional[PlatformActionLogger],
+    agent_configs: List[dict],
+    agent_names: Dict[int, str],
+    round_num: int,
+    n_actions: int,
+    action_type_names: List[str],
+    rng: random.Random,
+) -> int:
+    if not action_logger or not agent_configs or not action_type_names:
+        return 0
+    ids: List[int] = []
+    for c in agent_configs:
+        aid = c.get("agent_id")
+        if aid is not None:
+            try:
+                ids.append(int(aid))
+            except (TypeError, ValueError):
+                pass
+    if not ids:
+        return 0
+    written = 0
+    for _ in range(n_actions):
+        aid = rng.choice(ids)
+        at = rng.choice(action_type_names)
+        name = agent_names.get(aid, f"Agent_{aid}")
+        args = _synthetic_action_args(at, rng)
+        action_logger.log_action(
+            round_num=round_num,
+            agent_id=aid,
+            agent_name=name,
+            action_type=at,
+            action_args=args,
+        )
+        written += 1
+    return written
+
 
 # IPC相关常量
 IPC_COMMANDS_DIR = "ipc_commands"
@@ -1223,6 +1311,16 @@ async def run_twitter_simulation(
         if total_rounds < original_rounds:
             log_info(f"轮数已截断: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
     
+    agent_cfgs = config.get("agent_configs", [])
+    fast = is_fast_simulation_config(config)
+    fast_rng = random.Random(f"{config.get('simulation_id', 'sim')}-twitter-fast")
+    fpr = fast_actions_per_round(config)
+    if fast:
+        log_info(
+            f"FAST_SIMULATION: {fpr} synthetic actions/round (no LLM in main loop). "
+            f"Set time_config.fast_simulation=false for full OASIS behavior."
+        )
+
     start_time = datetime.now()
     
     for round_num in range(total_rounds):
@@ -1236,13 +1334,31 @@ async def run_twitter_simulation(
         simulated_hour = (simulated_minutes // 60) % 24
         simulated_day = simulated_minutes // (60 * 24) + 1
         
-        active_agents = get_active_agents_for_round(
-            result.env, config, simulated_hour, round_num
-        )
-        
         # 无论是否有活跃agent，都记录round开始
         if action_logger:
             action_logger.log_round_start(round_num + 1, simulated_hour)
+
+        if fast:
+            r = emit_fast_synthetic_actions(
+                action_logger,
+                agent_cfgs,
+                agent_names,
+                round_num + 1,
+                fpr,
+                TWITTER_ACTION_TYPE_NAMES,
+                fast_rng,
+            )
+            total_actions += r
+            if action_logger:
+                action_logger.log_round_end(round_num + 1, r)
+            if (round_num + 1) % 20 == 0:
+                progress = (round_num + 1) / total_rounds * 100
+                log_info(f"Day {simulated_day}, {simulated_hour:02d}:00 - Round {round_num + 1}/{total_rounds} ({progress:.1f}%)")
+            continue
+
+        active_agents = get_active_agents_for_round(
+            result.env, config, simulated_hour, round_num
+        )
         
         if not active_agents:
             # 没有活跃agent时也记录round结束（actions_count=0）
@@ -1422,6 +1538,16 @@ async def run_reddit_simulation(
         if total_rounds < original_rounds:
             log_info(f"轮数已截断: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
     
+    agent_cfgs = config.get("agent_configs", [])
+    fast = is_fast_simulation_config(config)
+    fast_rng = random.Random(f"{config.get('simulation_id', 'sim')}-reddit-fast")
+    fpr = fast_actions_per_round(config)
+    if fast:
+        log_info(
+            f"FAST_SIMULATION: {fpr} synthetic actions/round (no LLM in main loop). "
+            f"Set time_config.fast_simulation=false for full OASIS behavior."
+        )
+
     start_time = datetime.now()
     
     for round_num in range(total_rounds):
@@ -1435,13 +1561,31 @@ async def run_reddit_simulation(
         simulated_hour = (simulated_minutes // 60) % 24
         simulated_day = simulated_minutes // (60 * 24) + 1
         
-        active_agents = get_active_agents_for_round(
-            result.env, config, simulated_hour, round_num
-        )
-        
         # 无论是否有活跃agent，都记录round开始
         if action_logger:
             action_logger.log_round_start(round_num + 1, simulated_hour)
+
+        if fast:
+            r = emit_fast_synthetic_actions(
+                action_logger,
+                agent_cfgs,
+                agent_names,
+                round_num + 1,
+                fpr,
+                REDDIT_ACTION_TYPE_NAMES,
+                fast_rng,
+            )
+            total_actions += r
+            if action_logger:
+                action_logger.log_round_end(round_num + 1, r)
+            if (round_num + 1) % 20 == 0:
+                progress = (round_num + 1) / total_rounds * 100
+                log_info(f"Day {simulated_day}, {simulated_hour:02d}:00 - Round {round_num + 1}/{total_rounds} ({progress:.1f}%)")
+            continue
+
+        active_agents = get_active_agents_for_round(
+            result.env, config, simulated_hour, round_num
+        )
         
         if not active_agents:
             # 没有活跃agent时也记录round结束（actions_count=0）
@@ -1563,6 +1707,10 @@ async def main():
         if args.max_rounds < config_total_rounds:
             log_manager.info(f"  - 实际执行轮数: {args.max_rounds} (已截断)")
     log_manager.info(f"  - Agent数量: {len(config.get('agent_configs', []))}")
+    if is_fast_simulation_config(config):
+        log_manager.info(
+            f"  - FAST_SIMULATION: ON（每平台每轮约 {fast_actions_per_round(config)} 条合成动作，主循环无 LLM）"
+        )
     
     log_manager.info("日志结构:")
     log_manager.info(f"  - 主日志: simulation.log")

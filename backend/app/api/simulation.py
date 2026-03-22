@@ -3,6 +3,7 @@
 Step2: Zep实体读取与过滤、OASIS模拟准备与运行（全程自动化）
 """
 
+import json
 import os
 import traceback
 from flask import request, jsonify, send_file
@@ -1595,6 +1596,31 @@ def start_simulation():
             
             logger.info(f"启用图谱记忆更新: simulation_id={simulation_id}, graph_id={graph_id}")
         
+        # 快速模拟模式：跳过 Zep 图谱写入（否则万级动作会拖垮吞吐）
+        sim_dir = os.path.join(Config.UPLOAD_FOLDER, "simulations", simulation_id)
+        cfg_path = os.path.join(sim_dir, "simulation_config.json")
+        fast_sim = False
+        if os.path.isfile(cfg_path):
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as cf:
+                    file_cfg = json.load(cf)
+                tc = file_cfg.get("time_config") or {}
+                fs = tc.get("fast_simulation")
+                fast_sim = fs is True or str(fs).strip().lower() in ("1", "true", "yes")
+            except Exception:
+                pass
+        if not fast_sim:
+            fast_sim = os.environ.get("OASIS_FAST_SIMULATION", "").strip().lower() in (
+                "1", "true", "yes", "on",
+            )
+        if fast_sim and enable_graph_memory_update:
+            logger.info(
+                "fast_simulation: disabling graph memory updates for throughput "
+                "(set OASIS_FAST_SIMULATION=0 or time_config.fast_simulation=false to allow Zep updates)"
+            )
+            enable_graph_memory_update = False
+            graph_id = None
+
         # 启动模拟
         run_state = SimulationRunner.start_simulation(
             simulation_id=simulation_id,
